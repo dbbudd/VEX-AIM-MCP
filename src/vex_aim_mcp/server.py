@@ -1,6 +1,9 @@
-"""MCP server that lets Claude drive, see through, and play with a VEX AIM robot over Wi-Fi.
+"""MCP server that lets an AI assistant drive, see through, and play with a VEX AIM robot over Wi-Fi.
 
-Claude starts it with the vex-aim-mcp command (see the README). Settings (environment variables):
+Any MCP app can use it. Apps that start servers themselves (Claude, Codex, VS Code, Cursor…) run the
+vex-aim-mcp command, which speaks MCP over stdio. Apps that connect to a URL (ChatGPT) need
+`vex-aim-mcp --http`, which serves it over HTTP at a secret address, reached through a tunnel (see the
+README). Settings (environment variables):
   AIM_HOST                 robot IP or hostname (default 192.168.4.1, the robot's own hotspot)
   AIM_MAX_SPEED_PERCENT    cap on drive and turn speed (default 60)
   AIM_MAX_MOVE_MM          cap on a single move (default 1000)
@@ -9,14 +12,18 @@ Claude starts it with the vex-aim-mcp command (see the README). Settings (enviro
   AIM_YOLO_MODEL           Ultralytics weights for YOLO (default yolo26n.pt, downloaded on first use)
   AIM_PANEL_SETUP          where the panel saves measurements, tags, the field and abilities
                            (default: panel_setup.json in the data folder, e.g. ~/Library/Application Support/VEX AIM Panel)
+  AIM_HTTP_PORT            --http: the port (default 8000)
+  AIM_HTTP_SECRET          --http: the secret part of the address (default: a new random one each start)
 """
 
+import argparse
 import asyncio
 import functools
 import json
 import logging
 import math
 import os
+import secrets
 import shutil
 import sys
 import tempfile
@@ -29,6 +36,7 @@ from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import ToolAnnotations
 from pydantic import Field
 from websockets.exceptions import ConnectionClosed
@@ -91,7 +99,8 @@ Goal games
   goal, aims between the posts, kicks, backs away and returns a photo.
 
 Control panel and real-time reactions
-- control_panel opens a web page (show it in the browser pane) with the live camera, team buttons,
+- control_panel opens a web page on this computer (show it in your app's built-in browser if it has
+  one; otherwise give the person the link, or pass open_browser) with the live camera, team buttons,
   labelling, colour teaching, a STOP button, a map and a log; your tool calls appear in its log.
 - What the person does there is shared: robot_status().panel has the team, labels, taught colours
   and the last object they pointed out. Labels (e.g. "left post") and taught colours (e.g. "red cup")
@@ -133,7 +142,31 @@ async def lifespan(_server):
         await robot.disconnect()  # stops the wheels first if they're turning
 
 
-mcp = MCPServer("vex-aim", instructions=INSTRUCTIONS, lifespan=lifespan)
+ASSISTANTS = (("claude", "Claude"), ("codex", "Codex"), ("chatgpt", "ChatGPT"), ("openai", "ChatGPT"),
+              ("copilot", "Copilot"), ("visual studio code", "Copilot"), ("vscode", "Copilot"), ("cursor", "Cursor"),
+              ("gemini", "Gemini"), ("windsurf", "Windsurf"))
+
+
+def assistant_name(client: str) -> str:
+    """What the panel calls the assistant, from the app's MCP client name (e.g. claude-code → Claude).
+    An app it doesn't recognise is "your AI": its technical name (say "mcp-inspector") reads badly."""
+    low = client.lower()
+    return next((name for key, name in ASSISTANTS if key in low), "your AI")
+
+
+class NoteClient:
+    """MCP middleware: notes which app connected, from its initialize request, so the control panel can
+    call the assistant by name ("Point out to ChatGPT")."""
+
+    async def __call__(self, ctx, call_next):
+        if ctx.method == "initialize" and isinstance(ctx.params, dict):
+            client = str((ctx.params.get("clientInfo") or {}).get("name") or "")
+            state.assistant = assistant_name(client)
+            log.info("connected app: %s (%s)", state.assistant, client)
+        return await call_next(ctx)
+
+
+mcp = MCPServer("vex-aim", instructions=INSTRUCTIONS, lifespan=lifespan, middleware=[NoteClient()])
 
 
 def brief(kwargs: dict) -> str:
@@ -150,7 +183,7 @@ def brief(kwargs: dict) -> str:
 
 
 def tool(title: str, *, read_only: bool = False, physical: bool = False):
-    """Register a tool, turning robot problems into clean tool errors for Claude and noting
+    """Register a tool, turning robot problems into clean tool errors for the assistant and noting
     any automatic reconnect (which resets heading and position)."""
     annotations = ToolAnnotations(title=title, read_only_hint=read_only, destructive_hint=physical,
                                   open_world_hint=False)
@@ -163,18 +196,18 @@ def tool(title: str, *, read_only: bool = False, physical: bool = False):
             try:
                 result = await fn(*args, **kwargs)
             except AimError as e:
-                state.log("claude", f"{call} failed: {e}")
+                state.log("assistant", f"{call} failed: {e}")
                 raise ToolError(str(e)) from e
             except ConnectionClosed:
-                state.log("claude", f"{call} failed: lost the connection")
+                state.log("assistant", f"{call} failed: lost the connection")
                 raise ToolError("Lost the connection to the robot during that command. Try again; "
                                 "it reconnects automatically.") from None
             except ToolError as e:
-                state.log("claude", f"{call} refused: {e}")
+                state.log("assistant", f"{call} refused: {e}")
                 raise
             first = result[0] if isinstance(result, list) and result else result
             gist = first.splitlines()[0][:140] if isinstance(first, str) else "done"
-            state.log("claude", f"{call} → {gist}")
+            state.log("assistant", f"{call} → {gist}")
             if connections_before and robot.connection_count > connections_before:
                 note = "(Reconnected to the robot, so heading and position were reset to 0.)"
                 if isinstance(result, str):
@@ -303,21 +336,29 @@ async def control_panel(
     enabled: Annotated[bool, Field(description="true to open the control panel, false to close it")] = True,
     yolo_detection: Annotated[bool, Field(description="Also draw YOLO detections (80 everyday kinds of "
                                                       "object); takes ~10 s to load the first time")] = False,
+    open_browser: Annotated[bool, Field(description="Also open it in this computer's web browser: for apps "
+                                                    "without a built-in browser")] = False,
 ):
     """Open (or close) the control panel: a web page on this computer with the robot's live camera and
     detection boxes, team buttons, object labelling, colour teaching, a STOP button, a top-down map and
-    a log of what the person, you and the robot do. Show the URL in the browser pane. What the person
-    chooses there is shared with you: see robot_status().panel and wait_for("panel")."""
+    a log of what the person, you and the robot do. If your app has a built-in browser, show the URL
+    there; otherwise give the person the link, or set open_browser. What the person chooses there is
+    shared with you: see robot_status().panel and wait_for("panel")."""
     if not enabled:
         await panel.stop()
         return "Control panel closed."
     url = await panel.start(use_yolo=yolo_detection)
+    if open_browser:
+        import webbrowser
+        await asyncio.to_thread(webbrowser.open, url)
     try:
         await robot.ensure_connected()
         note = ""
     except AimError as e:
         note = f" The robot isn't reachable yet ({e}); the panel keeps trying and connects once it's awake."
-    return f"Control panel running at {url}. Open it in the browser pane so the person can use it.{note}"
+    opened = " It's open in this computer's web browser." if open_browser else (
+        " Show it in your app's browser if it has one, or give the person the link.")
+    return f"Control panel running at {url}.{opened}{note}"
 
 
 # --------------------------------------------------------------------------------------
@@ -624,7 +665,7 @@ KICKER_MM = 50
 
 
 async def report_with_photo(text: str) -> list:
-    """For uncertain outcomes: the result text plus a fresh annotated photo for Claude to check."""
+    """For uncertain outcomes: the result text plus a fresh annotated photo for the assistant to check."""
     jpeg = await robot.camera_frame()
     heading = robot.heading
     boxes = onboard_boxes(robot.detections(), frame_size(jpeg), name_for=lambda d: state.display_name(d, heading))
@@ -928,7 +969,7 @@ async def add_player(name: Annotated[str, Field(max_length=16)], host: str,
     except AimError as e:
         raise ToolError(str(e)) from None
     panel._sync_player()
-    state.log("claude", f"added {player.name} ({player.host}) to the team list")
+    state.log("assistant", f"added {player.name} ({player.host}) to the team list")
     return f"Added {player.name} ({player.host}, {team or 'no'} team). Use team_list to see it, select_player to control it."
 
 
@@ -1201,15 +1242,33 @@ async def disconnect_robot():
 
 
 def main() -> None:
-    """The vex-aim-mcp command: the MCP server, over stdio. `--version` just prints the version, e.g. to
-    check an install (or download it ahead of time) without starting the server."""
-    if "--version" in sys.argv[1:]:
-        from . import __version__
-        print(f"vex-aim-mcp {__version__}")
-        return
+    """The vex-aim-mcp command. By default it speaks MCP over stdio, for apps that start it themselves.
+    --http serves it over streamable HTTP instead, for apps that connect to a URL (ChatGPT, through a
+    tunnel), at http://127.0.0.1:<port>/<secret>/mcp: only this computer can reach it directly, and the
+    secret path keeps out anyone who doesn't have the address."""
+    from . import __version__
+    parser = argparse.ArgumentParser(prog="vex-aim-mcp", description="MCP server for a VEX AIM robot.")
+    parser.add_argument("--version", action="version", version=f"vex-aim-mcp {__version__}")
+    parser.add_argument("--http", action="store_true", help="serve over HTTP, for apps that connect to a URL (e.g. ChatGPT)")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("AIM_HTTP_PORT") or 8000), help="--http: the port (default 8000)")
+    parser.add_argument("--secret", default=os.environ.get("AIM_HTTP_SECRET"),
+                        help="--http: the secret part of the address (default: a new random one each start)")
+    args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(name)s: %(message)s")
     log.info("VEX AIM MCP server for robot at %s", HOST)
-    mcp.run("stdio")
+    if not args.http:
+        mcp.run("stdio")
+        return
+    secret = args.secret or secrets.token_urlsafe(18)
+    path = f"/{secret}/mcp"
+    print(f"\nVEX AIM MCP server at http://127.0.0.1:{args.port}{path}\n"
+          "Keep the address private: anyone who has it can drive the robot (with the usual motion lock and caps).\n"
+          f"For ChatGPT, make it reachable with a tunnel, e.g.  cloudflared tunnel --url http://127.0.0.1:{args.port}\n"
+          f"and give ChatGPT  https://<the tunnel's address>{path}\n", file=sys.stderr, flush=True)
+    # The secret path is the protection, so don't also insist the Host header says localhost: through a
+    # tunnel, it says the tunnel's name.
+    mcp.run("streamable-http", host="127.0.0.1", port=args.port, streamable_http_path=path,
+            transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False))
 
 
 if __name__ == "__main__":

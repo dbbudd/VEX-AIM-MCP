@@ -1,6 +1,6 @@
-"""What the person, Claude and the robot's routines share: the team, labels, taught colours,
+"""What the person, the AI assistant and the robot's routines share: the team, labels, taught colours,
 distance measurements, the map, AprilTag roles, the playing field, measured abilities, and a log of
-who did what. Used by the control panel (panel.py), Claude's tools (server.py) and routines.py."""
+who did what. Used by the control panel (panel.py), the MCP tools (server.py) and routines.py."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def wrap180(angle: float) -> float:
 
 
 class PanelState:
-    """What the person and Claude share: the team, object labels, taught colours, the last thing
+    """What the person and the assistant share: the team, object labels, taught colours, the last thing
     the person pointed out, and a log of who did what."""
 
     def __init__(self, setup_file: Path | None = SETUP_FILE) -> None:
@@ -96,7 +96,8 @@ class PanelState:
         # Measured by experiments (routines.py): where kicks stop, mm, per strength; and drive speeds by speed %.
         self.abilities: dict = {"kick": {}, "drive": {}}
         self.player: str | None = None  # this robot's player name, shown on its screen
-        self.mode = "auto"  # "auto": routines, plays and Claude may drive; "driver": the person drives from the panel
+        self.mode = "auto"  # "auto": routines, plays and the assistant may drive; "driver": the person drives from the panel
+        self.assistant = "your AI"  # what the panel calls the AI assistant: the connected app's name (server.NoteClient)
         self.venues: list[str] = []  # Wi-Fi networks saved for moving robots onto (passwords are in the keychain)
         self.roster: list[dict] = []  # the team list, as fleet.Fleet.to_dict() saves it
         self.match: dict | None = None  # a match in progress: phase ("auto" or "driver"), when it ends, durations
@@ -280,7 +281,7 @@ class PanelState:
         return out
 
     def summary(self, pose: tuple[float, float, float] | None = None) -> dict:
-        """For Claude. pose is the robot's (x, y, heading) in its odometry frame, if connected."""
+        """For the assistant. pose is the robot's (x, y, heading) in its odometry frame, if connected."""
         now = time.monotonic()
         field = FIELDS.get(self.field["name"])
         out = {"team": self.team, "labels": self.labels,

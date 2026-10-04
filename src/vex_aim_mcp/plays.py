@@ -1,4 +1,4 @@
-"""Soccer plays: short jobs the robot does by itself, for Claude's tools and the control panel.
+"""Soccer plays: short jobs the robot does by itself, for the assistant's tools and the control panel.
 
 - fetch_ball: find the ball (in view, on the map, or by looking around), drive to just short of it around
   anything in the way, then creep up on it with the camera until it's in the kicker.

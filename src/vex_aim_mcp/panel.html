@@ -153,7 +153,7 @@
   #log { flex: 1 1 0; min-height: 0; overflow-y: auto; font-size: 13px; }
   #log li { padding: 3px 0; border-bottom: 1px solid var(--line); }
   .who { display: inline-block; min-width: 52px; font-weight: 600; }
-  .who.you { color: var(--yellow); } .who.claude { color: #c084fc; } .who.robot { color: var(--green); }
+  .who.you { color: var(--yellow); } .who.assistant, .who.claude { color: #c084fc; } .who.robot { color: var(--green); }
 
   .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin-bottom: 0; background: var(--card);
     border: 1px solid var(--line); border-radius: 10px; }
@@ -267,7 +267,7 @@
     <div class="card">
       <div class="cardhead"><h2>Camera</h2>
         <span class="controls">
-          <span class="seg" id="modes" title="Auto: the robot (routines, plays, Claude) drives. Driver: you drive from here.">
+          <span class="seg" id="modes" title="Auto: the robot drives itself (routines, plays, your AI assistant). Driver: you drive from here.">
             <button data-mode="auto">🤖 Auto</button><button data-mode="driver">🎮 Driver</button><button id="ctlMenu" title="Controllers: game controller, AIM controller, keyboard">▾</button></span>
           <span class="seg icons" id="views">
             <button data-view="camera" title="Camera: the live picture, as everyone around the robot sees it"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.6l1.6-2h6.6l1.6 2h2.6A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.4"/></svg></button>
@@ -287,7 +287,7 @@
       <div class="toolbar">
         <button id="modeSelect" class="active">Select &amp; label</button>
         <button id="modeColour">Teach a colour</button>
-        <span class="muted small" id="modeHint">Click an object to label it or point it out to Claude.</span>
+        <span class="muted small" id="modeHint">Click an object to label it or point it out to your AI.</span>
       </div>
       <div id="drivePad" class="drivepad" hidden>
         <div class="pad" id="pad">
@@ -339,7 +339,7 @@
 
     <div class="tab" data-tab="teams" hidden>
       <div class="card">
-        <div class="cardhead"><h2>Player<span class="help" tabindex="0" data-tip="The robot's player name. It goes on the robot's screen in its team colour, so everyone can tell the players apart, and Claude uses it too.">?</span></h2></div>
+        <div class="cardhead"><h2>Player<span class="help" tabindex="0" data-tip="The robot's player name. It goes on the robot's screen in its team colour, so everyone can tell the players apart, and your AI assistant uses it too.">?</span></h2></div>
         <div class="line"><input id="playerName" maxlength="16" placeholder="Player name, e.g. Striker" style="flex:1">
           <button id="playerSave" class="primary">Show on robot</button></div>
         <div class="cardhead" style="margin:14px 0 8px"><h2>Reactions<span class="help" tabindex="0" data-tip="Faces on the robot's screen, for goals, misses and good passes. They go back to neutral after 5 seconds.">?</span></h2></div>
@@ -363,7 +363,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="cardhead"><h2>Team list<span class="help" tabindex="0" data-tip="The robots on your team. The highlighted one is the robot this panel shows and drives, and the one Claude's tools use. Find robots looks for others on this Wi-Fi network, to pair with.">?</span></h2><span class="controls">
+        <div class="cardhead"><h2>Team list<span class="help" tabindex="0" data-tip="The robots on your team. The highlighted one is the robot this panel shows and drives, and the one your AI assistant's tools use. Find robots looks for others on this Wi-Fi network, to pair with.">?</span></h2><span class="controls">
           <button id="teamFind" class="small primary" title="Look for AIM robots on this Wi-Fi network, to pair with the team">🔍 Find robots</button>
           <button id="teamConnect" class="small" title="Connect every robot on the list">Connect all</button>
           <button id="teamLabel" class="small" title="Show each player's card on its robot">Label all</button></span></div>
@@ -448,7 +448,7 @@
       <li>No sign-in pages, school or "enterprise" logins, and no guest networks that keep devices apart.</li>
       <li>Setting up a robot, or one that can't join anything: put it on its own hotspot (here, or on its screen: Settings → Radio →
         Access Point), join its AIM-… Wi-Fi on this Mac (the password is on its screen), then switch it to a network here.
-        On the robot's hotspot this Mac has no internet, so Claude can't reply until it's back on a network, but this panel works.</li>
+        On the robot's hotspot this Mac has no internet, so your AI assistant can't reply until it's back on a network, but this panel works.</li>
       <li>For competitions, bring a travel router: set every robot to it once, at home, and reserve each robot's address in the
         router. Then nothing about the robots changes at a new venue.</li>
     </ul></details>
@@ -485,6 +485,8 @@ function toast(msg, ok = false) {
 const fmtB = (b) => (Math.round(b) === 0 ? "0°" : (b > 0 ? "+" : "") + Math.round(b) + "°");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const AI = () => (S && S.assistant) || "your AI";  // the connected app's name: Claude, ChatGPT, Codex…
+const AI_LABEL = () => (S && S.assistant && S.assistant !== "your AI" ? S.assistant : "AI");
 const cm = (mm) => Math.round(mm / 10);
 const shortName = (s) => (s.includes("“") ? s.split("“")[1].replace("”", "") : s);
 const nick = (o) => (o.display.includes("“") ? shortName(o.display) : SHORT[o.name] || o.display);
@@ -564,7 +566,7 @@ function render(force = false) {  // the picture's layers on every poll; the sid
   if (!full) return;
   lastFull = performance.now();
   renderPosition(R); renderExplore(R); renderRange(); renderColours(); renderTags(R);
-  renderTeams(); renderPlayer(); renderRoster(); renderLooking(); renderStrategy(); renderPlays();
+  renderTeams(); renderPlayer(); renderRoster(); renderLooking(); renderHint(); renderStrategy(); renderPlays();
   drawMap();
 }
 
@@ -673,6 +675,7 @@ function renderRoster() {
       : `<span><button class="small" data-show="${esc(p.name)}">Show</button><button class="small ghost" data-remove="${esc(p.name)}" title="Take it off the list">×</button></span>`) +
     "</li>").join("") || '<li class="muted small">No robots yet.</li>');
 }
+function renderHint() { if (mode === "select") $("#modeHint").textContent = `Click an object to label it or point it out to ${AI()}.`; }
 function renderLooking() {
   const names = S.looking_for || [];
   $("#lookingFor").hidden = !names.length;
@@ -781,7 +784,7 @@ function renderLog() {
   const ul = $("#log");
   for (const e of S.events) {
     const li = document.createElement("li"), t = new Date(e.t * 1000).toLocaleTimeString();
-    li.innerHTML = `<span class="muted">${t}</span> <span class="who ${e.who}">${e.who === "you" ? "You" : e.who === "claude" ? "Claude" : "Robot"}</span> ${esc(e.text)}`;
+    li.innerHTML = `<span class="muted">${t}</span> <span class="who ${e.who}">${e.who === "you" ? "You" : e.who === "robot" ? "Robot" : esc(AI_LABEL())}</span> ${esc(e.text)}`;
     ul.prepend(li);
   }
 }
@@ -1010,7 +1013,7 @@ $("#netHotspotNote").addEventListener("click", async (ev) => {
 async function toHotspot() {
   const here = NET.robot && NET.robot.network;
   const ok = await ask("Switch this robot to its own hotspot?", "It leaves this network and starts its own Wi-Fi, called AIM-…: the password is on " +
-    "the robot's screen. Join it on this Mac and the panel reconnects by itself. On the robot's hotspot this Mac has no internet, so Claude " +
+    "the robot's screen. Join it on this Mac and the panel reconnects by itself. On the robot's hotspot this Mac has no internet, so ${AI()} " +
     `can't reply until it's back on a network, but this panel keeps working.${here ? ` “${here}” is remembered first, so you can switch back.` : ""}`, "Switch");
   if (!ok) return;
   const j = await api("net_hotspot");
@@ -1132,7 +1135,7 @@ function renderPlays() {
 }
 function renderDecide() {
   const out = [], a = S.advice;
-  if (a) {  // the same advice Claude's advise tool gives
+  if (a) {  // the same advice the assistant's advise tool gives
     const play = ADVICE_PLAY[a.action], can = play && S.robot.motion_enabled && S.mode !== "driver" && !S.routine;
     out.push(`<div class="verdict ${a.action === "shoot" ? "ok" : "no"} advice"><span><b>${cap(a.action)}${a.strength ? " · " + a.strength : ""}</b>: ${esc(a.why)}</span>` +
       (play ? `<button class="small" id="doAdvice" ${can ? "" : "disabled"}>Do it</button>` : "") + "</div>");
@@ -1279,7 +1282,7 @@ function inspect(d) {
   box.innerHTML = `<div><b>${esc(d.display)}</b> <span class="muted">· ${where}${d.held ? " · in the kicker" : ""}</span></div>` +
     (onboard ? `<div class="line"><input id="labelIn" placeholder="Label, e.g. left post" value="${esc(d.label || "")}"><button id="saveLabel">Save label</button>` +
       `<input id="distIn" type="number" min="2" placeholder="Real distance, cm" style="width:150px"><button id="recordDist">Record distance</button></div>` : "") +
-    `<div class="line"><input id="noteIn" placeholder="Note for Claude (optional)"><button id="pointOut">Point out to Claude</button><button id="closeI">Close</button></div>`;
+    `<div class="line"><input id="noteIn" placeholder="Note for ${esc(AI())} (optional)"><button id="pointOut">Point out to ${esc(AI())}</button><button id="closeI">Close</button></div>`;
   if (onboard) {
     $("#saveLabel").onclick = () => api("label", { object: d, label: $("#labelIn").value });
     $("#recordDist").onclick = async () => {
@@ -1309,7 +1312,7 @@ function setMode(m) {
   if (m === "colour" && view === "ai") { setView("both"); toast("Switched to the camera picture, to teach a colour", true); }
   mode = m; closeInspector();
   $("#modeSelect").classList.toggle("active", m === "select"); $("#modeColour").classList.toggle("active", m === "colour");
-  $("#modeHint").textContent = m === "select" ? "Click an object to label it or point it out to Claude." : "Drag a box over an object to teach its colour.";
+  $("#modeHint").textContent = m === "select" ? `Click an object to label it or point it out to ${AI()}.` : "Drag a box over an object to teach its colour.";
 }
 $("#modeSelect").onclick = () => setMode("select");
 $("#modeColour").onclick = () => setMode("colour");
@@ -1341,12 +1344,12 @@ function openTagEditor(id, x, y) {
     `<button class="ghost small" id="popClose" title="Close">✕</button></div>` +
     `<label>Name<input id="popName" value="${esc(tagLabel(id) || "")}" placeholder="e.g. top-left corner"></label>` +
     `<label>It's a<span class="seg">${roles.map(([r, n]) => `<button data-role="${r}" class="small ${(t.role || "") === r ? "active " + r : ""}">${n}</button>`).join("")}</span></label>` +
-    `<label>What it means<textarea id="popNote" rows="2" placeholder="For Claude, e.g. “corner: turn back to the middle” or “our home base”">${esc(t.note || "")}</textarea></label>` +
+    `<label>What it means<textarea id="popNote" rows="2" placeholder="For ${esc(AI())}, e.g. “corner: turn back to the middle” or “our home base”">${esc(t.note || "")}</textarea></label>` +
     (now && !now.distance_mm ? `<label>Distance<span class="line" style="flex-wrap:nowrap"><input id="popDist" type="number" min="2" placeholder="cm" style="width:80px">` +
       `<button id="popRecord" class="small">Record</button><span class="muted small">from the camera</span></span></label>` : "") +
     `<label>On the field${field ? `<span><button id="popPin" class="small">${t.pin ? "Unpin" : "Pin on the map"}</button></span>`
       : '<span class="muted small">choose a field for the map to pin it</span>'}</label>` +
-    `<div class="line" style="justify-content:flex-end">${now ? '<button id="popPoint" class="small ghost">Point out to Claude</button>' : ""}` +
+    `<div class="line" style="justify-content:flex-end">${now ? '<button id="popPoint" class="small ghost">Point out to ${esc(AI())}</button>' : ""}` +
     `<button id="popSave" class="small primary">Save</button></div>`;
   pop.hidden = false;
   pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, x)) + "px";

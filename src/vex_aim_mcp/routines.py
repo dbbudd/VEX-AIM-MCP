@@ -1,4 +1,4 @@
-"""Longer jobs the robot does by itself, for the control panel and Claude's tools.
+"""Longer jobs the robot does by itself, for the control panel and the assistant's tools.
 
 - scan_here: turn a full circle in steps, pausing so everything in view goes on the map.
 - explore_field: visit a grid of spots across the chosen field, scanning at each, to map the arena.
@@ -8,7 +8,7 @@
 - speed_test: drive a measured distance and time it: top speed, and how quickly it gets there.
 
 All of them need motion unlocked and stop on a bump. run() lets only one go at a time, and cancel()
-(the STOP button, or Claude's stop tool) ends it whoever started it. Progress goes to the panel's
+(the STOP button, or the stop tool) ends it whoever started it. Progress goes to the panel's
 log and status line. The map itself is built by the control panel while it's open.
 """
 

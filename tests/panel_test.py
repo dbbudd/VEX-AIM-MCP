@@ -138,7 +138,7 @@ async def main():
                 check("STOP from the panel", code == 200, code)
                 state = json.loads((await get("/state.json?since=0"))[1])
                 whos = {e["who"] for e in state["events"]}
-                check("log has entries from you, Claude and the robot", {"you", "claude", "robot"} <= whos, whos)
+                check("log has entries from you, the assistant and the robot", {"you", "assistant", "robot"} <= whos, whos)
                 check("taught colour listed in panel state", any(c["label"] == "red cup" for c in state["colours"].values()))
                 for e in list(state["events"])[-8:]:
                     print(f"     log: [{e['who']}] {e['text'][:110]}")

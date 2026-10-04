@@ -84,7 +84,7 @@ class ControlPanel:
         self._sync_player()
 
     def _sync_player(self) -> None:
-        """The selected player's name and team are what the rest of the panel (and Claude) call
+        """The selected player's name and team are what the rest of the panel (and the AI assistant) call
         "the player" and "the team"; and the team list is saved with the set-up."""
         me = self.fleet.pick()
         self.state.player, self.state.team = me.name, me.team
@@ -92,7 +92,7 @@ class ControlPanel:
         self.state.save_setup()
 
     async def _select(self, name: str) -> None:
-        """Show and drive another player's robot from this panel (and Claude's tools, when in-process)."""
+        """Show and drive another player's robot from this panel (and the assistant's tools, when in-process)."""
         player = self.fleet.select(name)
         await player.robot.ensure_connected()
         self.robot = player.robot
@@ -216,7 +216,7 @@ class ControlPanel:
         return (round(max(-100, min(100, forwards)) * scale, 1), 0.0, round(max(-100, min(100, turn)) * scale * 0.7, 1))
 
     async def _run_match(self, auto_s: float, driver_s: float) -> None:
-        """A match: an autonomous period (routines, plays, Claude), then driver control, then everything stops."""
+        """A match: an autonomous period (routines, plays, the assistant), then driver control, then everything stops."""
         state = self.state
         try:
             state.mode = "auto"
@@ -819,7 +819,7 @@ class ControlPanel:
     async def _readdress(self, player, host: str, wait: bool = False):
         """The same robot at a new address (it switched networks, or the router gave it another one).
         Returns its player: a new one, unless it's the panel's own robot, whose connection is shared with
-        Claude's tools and just reconnects (in the background, unless wait)."""
+        the assistant's tools and just reconnects (in the background, unless wait)."""
         if player is not self.fleet.pick():
             return await self.fleet.set_host(player.name, host)
         self.fleet._check_unique(player.name, host, ignore=player)
@@ -921,6 +921,7 @@ class ControlPanel:
                                "vy": round(o.get("vy", 0)) if now - o["seen"] < 1.5 else 0,
                                "sightings": o["sightings"]} for o in state.map if o["sightings"] >= MAP_CONFIRM]}
         info["released"] = self._released
+        info["assistant"] = state.assistant
         info["looking_for"] = sorted(self._looking_for)
         if not robot.connected:
             self._maybe_connect()
@@ -933,7 +934,7 @@ class ControlPanel:
             info["robot"] = {"connected": False, "problem": str(e)}
             return info
         heading = robot.heading
-        with contextlib.suppress(Exception):  # the same advice Claude's advise tool gives (strategy.decide)
+        with contextlib.suppress(Exception):  # the same advice the advise tool gives (strategy.decide)
             holding = held_object(robot.detections()) == "SportsBall"
             info["advice"] = strategy.decide(state, (*state.on_field(*robot.position), heading), holding)
         info["robot"] = {"connected": True, "host": robot.host, "battery": snap["battery_percent"],
@@ -1010,7 +1011,7 @@ async def _main() -> None:
 
 
 def main() -> None:
-    """The vex-aim-panel command: the control panel on its own, without Claude."""
+    """The vex-aim-panel command: the control panel on its own, without an AI assistant."""
     logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(name)s: %(message)s")
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(_main())

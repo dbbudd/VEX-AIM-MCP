@@ -12,7 +12,7 @@ With every player on the field, a "Robot" that one of them sees can be identifie
 puts it is matched to the nearest player. One that matches nobody isn't on the team list, so it's
 probably an opponent's.
 
-Shared by the control panel and Claude's tools; it only needs aim_client and world.
+Shared by the control panel and the MCP tools; it only needs aim_client and world.
 """
 
 from __future__ import annotations
