@@ -16,6 +16,7 @@ python tests/strategy_test.py       # strategy.decide and its helpers, no robot 
 python tests/plays_test.py          # the soccer plays in the arena world, about 4 minutes (:8880-8885, :8780-8784)
 python tests/fleet_test.py          # the team list and several simulated robots (:8890-8892, :8895)
 python tests/team_panel_test.py     # the team list in the control panel: add, label, show, save (:8877-8878, :8756)
+python tests/http_test.py           # HTTP mode, as ChatGPT reaches it: the secret address, a tunnel's host name, the assistant's name (:8866, :8757-8758)
 ```
 
 Or all of them (about 10 minutes):

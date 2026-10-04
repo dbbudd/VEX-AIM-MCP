@@ -10,8 +10,8 @@ An AIM robot's radio has three modes. You choose one on its screen, under Settin
 
 | Mode | What it's for |
 |---|---|
-| **Station** | The robot joins an existing Wi-Fi network. This is what this project uses: your computer keeps its internet, so Claude keeps working. |
-| **Access Point** | The robot makes its own Wi-Fi hotspot, called `AIM-…`, at 192.168.4.1. Good for setting a robot up; not for using Claude, because a Mac on the robot's hotspot has no internet. |
+| **Station** | The robot joins an existing Wi-Fi network. This is what this project uses: your computer keeps its internet, so your AI assistant keeps working. |
+| **Access Point** | The robot makes its own Wi-Fi hotspot, called `AIM-…`, at 192.168.4.1. Good for setting a robot up; not for using an AI assistant, because a Mac on the robot's hotspot has no internet. |
 | **Bluetooth** | For VEXcode. Not used here. |
 
 A robot remembers one network. If it can't join it (you're somewhere else, or the password changed), it keeps trying
@@ -29,7 +29,7 @@ The robot gets its address from the router (DHCP), and it can change from day to
 
 1. On the robot: Settings → Radio. If it shows **Station** and an address, it's on a network.
 2. Check that's your computer's network, and put the address in `AIM_HOST` (see the [README](../README.md#install)).
-3. Ask Claude to connect. If it can't, the robot may be asleep (tap its screen) or on another network.
+3. Ask your assistant to connect. If it can't, the robot may be asleep (tap its screen) or on another network.
 
 ## A new robot, or a new network
 
@@ -43,8 +43,8 @@ The easiest way is with the control panel:
    joined before. Add its password, or press **🔑 From this Mac** to use the one your Mac saved. Then press **Switch…**.
 5. Join the same network on your Mac again. The panel finds the robot at its new address by itself and reconnects.
 
-Steps 2 to 5 happen without internet, so Claude can't reply then, but the panel keeps working. Open the panel
-before you start (ask Claude to), or run it yourself with `vex-aim-panel`.
+Steps 2 to 5 happen without internet, so your assistant can't reply then, but the panel keeps working. Open the panel
+before you start (ask your assistant to), or run it yourself with `vex-aim-panel`.
 
 You can also do this without the panel, from a browser: VEX's
 [Station mode guide](https://api.vex.com/aim/home/websocket/wifi_setup/connection_sta.html) uses the robot's own
@@ -59,7 +59,7 @@ set-up page at http://192.168.4.1.
 - **Name each robot.** In the panel's Teams tab, **🔍 Find robots** lists every AIM robot on the network. **Blink**
   flashes one and rings, so you can tell which is which. **Pair…** puts it on your team list with a name and a team,
   and its screen shows its player card.
-- **One program per robot.** Only one program should drive a robot at a time. Ask Claude to disconnect before using
+- **One program per robot.** Only one program should drive a robot at a time. Ask your assistant to disconnect before using
   VEXcode or a script with it.
 
 ## Competitions and other venues
@@ -92,4 +92,4 @@ The panel uses a few macOS features, and macOS asks you before each one is first
 - **The keychain, for remembered networks.** Remembered passwords are kept in your login keychain, under
   "VEX AIM venue Wi-Fi". The panel's saved set-up keeps only the networks' names.
 
-Claude itself never sees or handles a Wi-Fi password: only the panel and the keychain do.
+Your AI assistant never sees or handles a Wi-Fi password: only the panel and the keychain do.

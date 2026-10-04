@@ -6,14 +6,14 @@ the user guide. [docs/](docs/) has the control panel, tools, robot set-up and te
 ## The project in one picture
 
 ```
-Claude ──MCP over stdio──▶ server.py ──▶ aim_client.AimRobot ──4 WebSockets over Wi-Fi──▶ VEX AIM robot
-                               └── panel.ControlPanel at http://127.0.0.1:8765, in the same process
+AI app ──MCP (stdio, or HTTP)──▶ server.py ──▶ aim_client.AimRobot ──4 WebSockets over Wi-Fi──▶ VEX AIM robot
+                                     └── panel.ControlPanel at http://127.0.0.1:8765, in the same process
 ```
 
 - `server.py` creates one `AimRobot`, one `world.PanelState`, one `ControlPanel` and one `YoloDetector`.
 - The control panel runs in-process (the `control_panel` tool) and shares the robot connection and the `PanelState`,
-  so Claude sees what the person does there. It also runs on its own (`vex-aim-panel`), with its own connection and
-  state.
+  so the assistant sees what the person does there. It also runs on its own (`vex-aim-panel`), with its own connection
+  and state.
 - `PanelState` is the shared state. Part of it is saved to `panel_setup.json` in the data folder (`paths.data_dir()`:
   `~/Library/Application Support/VEX AIM Panel` on macOS; env `AIM_PANEL_SETUP` overrides): measurements, tag roles,
   pins, meanings and labels, the field, abilities, player, team, team list, remembered network names and recent
@@ -43,8 +43,24 @@ panel has to run without it.
 | `mock_arena.py` | Several simulated robots on one pitch (ports from 8899 up) |
 | `wifiscan/` | The Swift source of the "AIM Wi-Fi Scan" helper app (see Wi-Fi below) |
 
-Commands (`[project.scripts]` in `pyproject.toml`): `vex-aim-mcp` (the server; `--version`), `vex-aim-panel`,
+Commands (`[project.scripts]` in `pyproject.toml`): `vex-aim-mcp` (the server; `--version`, `--http`), `vex-aim-panel`,
 `vex-aim-sim` and `vex-aim-arena`. `python -m vex_aim_mcp` also runs the server.
+
+## Apps and transports
+
+The server isn't tied to one AI app: it's plain MCP, and [docs/clients.md](docs/clients.md) shows how each app adds it.
+
+- **stdio** (the default) is for apps that start the server themselves: Claude Code, Claude Desktop, Codex, VS Code,
+  Cursor, Gemini CLI.
+- **`--http`** serves streamable HTTP at `http://127.0.0.1:<port>/<secret>/mcp`, for apps that connect to a URL
+  (ChatGPT, through a tunnel). It only listens on 127.0.0.1. The secret path (`--secret` / `AIM_HTTP_SECRET`, else
+  random each start) is the protection, so the SDK's Host-header check is off: through a tunnel the Host is the
+  tunnel's name.
+- **The assistant's name:** the `NoteClient` middleware in `server.py` reads the app's `clientInfo.name` from its
+  `initialize` request and sets `state.assistant` (Claude, ChatGPT, Codex, Copilot, Cursor, Gemini, Windsurf; else
+  "your AI"). The page's `AI()` helper uses it on buttons, hints and the log. Never hard-code an app's name in the
+  panel, the tools' descriptions or `INSTRUCTIONS`: write "the assistant", and don't assume a built-in browser
+  (`control_panel` has `open_browser` for apps without one).
 
 ## Setting up to develop
 
@@ -81,7 +97,8 @@ for t in tests/*_test.py; do python "$t" || echo "FAILED: $t"; done
 ```
 
 - Each test starts its own simulators and panel on its own ports, prints PASS/FAIL lines and exits non-zero on a
-  failure. The whole set takes about 10 minutes; `plays_test.py` alone takes about 4.
+  failure. The whole set (eleven files) takes about 10 minutes; `plays_test.py` alone takes about 4.
+  `http_test.py` checks HTTP mode the way ChatGPT uses it.
 - Tests use scratch set-up files (env `AIM_PANEL_SETUP`) and a separate keychain entry ("VEX AIM venue Wi-Fi (test)"),
   so they never touch a person's saved set-up or passwords.
 - Test-only environment overrides: `AIM_SCAN_HOSTS`, `AIM_KNOWN_NETWORKS`, `AIM_KEYCHAIN_SERVICE`,
@@ -110,7 +127,7 @@ for t in tests/*_test.py; do python "$t" || echo "FAILED: $t"; done
   (the `_move` and `drive_to` helpers raise `Stopped`).
 - Units are mm and degrees. Speeds are a % of 200 mm/s or 180°/s, capped by `AIM_MAX_SPEED_PERCENT` (use
   `routines.speeds`). Headings are clockwise. Bearings are − for left and + for right.
-- The panel log is `state.log(who, text)`, where who is `claude`, `you` or `robot`. The person's panel actions go
+- The panel log is `state.log(who, text)`, where who is `assistant`, `you` or `robot`. The person's panel actions go
   through `state.action(...)`, which wakes `wait_for("panel")`. Diagnostics go to `logging` (stderr), never stdout:
   stdout is the MCP protocol.
 - A new saved setting goes in both `PanelState._load_setup` and `save_setup`. Call `state.save_setup()` after

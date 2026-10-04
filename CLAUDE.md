@@ -4,6 +4,8 @@
 
 ## Notes for Claude Code
 
+- This project supports every MCP app, not just Claude: keep the panel, tool descriptions and docs app-neutral (see
+  "Apps and transports" above).
 - This session may also have the `vex-aim` MCP server connected (tools like `robot_status` and `look`). Those tools
   run the code as it was when the server started. After changing the server, it needs restarting (a new session,
   or reconnecting the server) before the tools change.

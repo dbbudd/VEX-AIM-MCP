@@ -381,7 +381,7 @@
 
     <div class="tab" data-tab="strategy" hidden>
       <div class="card">
-        <div class="cardhead"><h2>Plays</h2></div>
+        <div class="cardhead"><h2>Plays<span class="help" tabindex="0" data-tip="The robot does these by itself, using the map and the measured kicks. Go to… and Pass to… then ask you to click the map. STOP ends any of them.">?</span></h2></div>
         <div class="plays" id="plays">
           <button data-play="fetch" title="Find the ball and get it into the kicker">⚽ Fetch the ball</button>
           <button data-play="score" title="Get the ball, line up between our goal's posts and kick">🥅 Score a goal</button>
@@ -405,7 +405,7 @@
           <button id="speedTest" class="small">Test</button></div>
       </div>
       <div class="card">
-        <div class="cardhead"><h2>Pass, shoot or dribble?</h2></div>
+        <div class="cardhead"><h2>Pass, shoot or dribble?<span class="help" tabindex="0" data-tip="Advice from the map, the measured kicks and the driving speed: the same as the assistant's advise tool. In the table, “—” means not tested, or out of reach. A kick is usually far faster than driving: pass or shoot when the target is within reach and the path is clear; dribble when it isn't. Other AIM robots drive at the same speeds.">?</span></h2></div>
         <div id="decide"></div>
       </div>
     </div>
@@ -1131,14 +1131,15 @@ function renderPlays() {
   const R = S.robot, why = !R.connected ? "Not connected." : S.mode === "driver" ? "You're driving: switch to Auto to run a play."
     : !R.motion_enabled ? "Unlock motion (top right) once the robot is on the floor." : S.routine ? `Busy: ${S.routine.name}. STOP ends it.` : "";
   for (const b of document.querySelectorAll("#plays button")) b.disabled = !!why;
-  $("#playsNote").textContent = why || "The robot does these by itself, using the map and the measured kicks. STOP ends them.";
+  $("#playsNote").textContent = why;  // why they can't run now; what they do is in the heading's tooltip
+  $("#playsNote").hidden = !why;
 }
 function renderDecide() {
   const out = [], a = S.advice;
   if (a) {  // the same advice the assistant's advise tool gives
     const play = ADVICE_PLAY[a.action], can = play && S.robot.motion_enabled && S.mode !== "driver" && !S.routine;
     out.push(`<div class="verdict ${a.action === "shoot" ? "ok" : "no"} advice"><span><b>${cap(a.action)}${a.strength ? " · " + a.strength : ""}</b>: ${esc(a.why)}</span>` +
-      (play ? `<button class="small" id="doAdvice" ${can ? "" : "disabled"}>Do it</button>` : "") + "</div>");
+      (play ? `<button class="small" id="doAdvice" style="white-space:nowrap" ${can ? "" : "disabled"}>Do it</button>` : "") + "</div>");
   }
   const row = (x) => {
     const kicks = STRENGTHS.map((k) => [k, ballTime(k, x)]).filter(([, t]) => t), best = kicks.sort((a, b) => a[1] - b[1])[0], drive = driveTime(x);
@@ -1146,7 +1147,6 @@ function renderDecide() {
       `<td>${drive ? drive.toFixed(1) + " s" : "—"}</td></tr>`;
   };
   out.push(`<table class="race"><tr><th>To cover</th><th>Kicked ball</th><th>Robot driving</th></tr>${[500, 1000, 2000].map(row).join("")}</table>`);
-  out.push('<div class="muted small">“—” means not tested, or out of reach. A kick is usually far faster than driving: pass or shoot when the target is within reach and the path is clear; dribble when it isn\'t. Other AIM robots drive at the same speeds.</div>');
   setHtml($("#decide"), out.join(""));
 }
 $("#kicks").addEventListener("click", (ev) => {
