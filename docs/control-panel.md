@@ -147,8 +147,8 @@ Switch between **🤖 Auto** and **🎮 Driver** at the top of the camera card.
 
 **The drive pad**, below the camera:
 
-- Hold its buttons, or use the keyboard: W A S D or the arrow keys move, Q and E turn, Space kicks, and holding Shift
-  goes slowly.
+- Hold its buttons, or use the keyboard: W A S D or the arrow keys move, Q and E turn, and Space kicks. Hold Shift to
+  go slowly.
 - The robot stops the moment you let go.
 - **Speed** sets how fast it drives. **KICK** kicks at the strength you pick: soft, medium or hard.
 
@@ -184,7 +184,7 @@ on a bump. **STOP** ends them, whoever started them.
 ### Explore: map the arena
 
 - **Scan here** turns a full circle, putting everything it sees on the map.
-- **Explore the field** drives a grid across the field chosen under [the map](#the-map), and scans at each spot. It
+- **Explore the field** drives a grid across the field you chose for [the map](#the-map), and scans at each spot. It
   goes around obstacles and anything already on the map.
 - **AprilTags:** turn detection on, then click a tag to name it and make it a **marker** or an **obstacle**. Write
   what it means for your assistant, for example "corner: turn back to the middle".
