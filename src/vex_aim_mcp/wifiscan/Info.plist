@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key><string>local.vex-aim-panel.wifi-scan</string>
+  <key>CFBundleName</key><string>AIM Wi-Fi Scan</string>
+  <key>CFBundleDisplayName</key><string>AIM Wi-Fi Scan</string>
+  <key>CFBundleExecutable</key><string>wifiscan</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSUIElement</key><true/>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>NSLocationUsageDescription</key>
+  <string>macOS only shows Wi-Fi network names to apps that may use Location Services. The VEX AIM control panel uses this to list nearby networks for your robots. No location is read or kept.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>macOS only shows Wi-Fi network names to apps that may use Location Services. The VEX AIM control panel uses this to list nearby networks for your robots. No location is read or kept.</string>
+</dict>
+</plist>

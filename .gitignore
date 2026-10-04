@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# A panel's saved set-up holds a robot's address, hardware addresses and Wi-Fi network names
+panel_setup.json
+
+# YOLO weights download on first use; test and simulator logs
+*.pt
+*.log
+
+.DS_Store

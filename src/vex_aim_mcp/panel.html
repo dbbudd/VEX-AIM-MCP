@@ -1,0 +1,1724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIM Control Panel</title>
+<style>
+  /* One type family and a small scale: 12px small text and canvas labels, 13px card titles,
+     14px body and controls, 16px the page title. */
+  :root {
+    color-scheme: dark;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --bg: #101214; --card: #1a1d21; --line: #2c3036; --line2: #3a3f46; --text: #e6e8ea; --muted: #9aa1a9;
+    --blue: #3b82f6; --orange: #f59e0b; --green: #22c55e; --red: #ef4444; --yellow: #eab308; --cyan: #22d3ee;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .small { font-size: 12px; }
+  .muted { color: var(--muted); }
+  [hidden] { display: none !important; }
+
+  header { position: sticky; top: 0; z-index: 15; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 8px 16px; background: rgba(16,18,20,.94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; font-weight: 650; margin: 0 6px 0 0; }
+  .status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); flex: none; }
+  .dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
+  .battery, .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 7px; border-radius: 999px;
+    background: var(--line); color: var(--muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .battery svg { display: block; overflow: visible; }
+  .battery .shell { fill: rgba(0,0,0,.25); stroke: currentColor; stroke-width: 1.6; }
+  .battery .nub { fill: currentColor; }
+  .battery #batBolt { fill: #fff; stroke: #111; stroke-width: .8; }
+  .battery.ok { color: #86efac; } .battery.ok #batFill { fill: var(--green); }
+  .battery.mid { color: #fde047; } .battery.mid #batFill { fill: var(--yellow); }
+  .battery.low { color: #fca5a5; animation: lowbat 1.4s ease-in-out infinite; } .battery.low #batFill { fill: var(--red); }
+  @keyframes lowbat { 50% { box-shadow: 0 0 0 4px rgba(239,68,68,.35); } }
+  .chip svg { width: 16px; height: 16px; fill: currentColor; }
+  .chip.blue { background: var(--blue); color: #fff; } .chip.orange { background: var(--orange); color: #111; }
+  #motion { font-size: 13px; padding: 5px 12px; }
+  #motion.unlocked { background: #422006; border-color: var(--yellow); color: #fde047; }
+  button.stop { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; letter-spacing: .06em; padding: 6px 22px; }
+  button.stop:hover { background: #dc2626; border-color: #fca5a5; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr); gap: 14px; padding: 14px 16px; }
+  main > section, main > aside, .tab { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .mapcard { grid-column: 1 / -1; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  #logCard { flex: 1 1 0; min-height: 200px; display: flex; flex-direction: column; }  /* fills the column, so both columns end level */
+  #logCard.closed { flex: none; min-height: 0; }
+  #logCard.closed #log { display: none; }
+  h2.toggle { cursor: pointer; user-select: none; }
+  h2.toggle::after { content: "▾"; margin-left: 6px; font-size: 12px; }
+  #logCard.closed h2.toggle::after { content: "▸"; }
+  #logCard.closed .cardhead { margin-bottom: 0; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } #logCard { flex: none; } #log { max-height: 300px; } }
+  .help { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 6px; border: 1px solid var(--line2); border-radius: 50%;
+    color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; vertical-align: 1px; cursor: help; position: relative; }
+  .help:hover, .help:focus { color: var(--text); border-color: var(--muted); outline: none; }
+  .help:hover::after, .help:focus::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: -10px; z-index: 40;
+    width: max-content; max-width: min(280px, 70vw); padding: 8px 10px; border-radius: 8px; background: #0b0d0f; border: 1px solid var(--line2);
+    color: var(--text); font: 400 12px/1.45 var(--font); white-space: normal; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .card h2, .pop h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0; font-weight: 600; }
+  .cardhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; min-height: 26px; }
+  .cardhead .controls { display: flex; gap: 6px; align-items: center; }
+  details.card > summary { cursor: pointer; list-style: none; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary h2 { display: inline; }
+  details.card > summary::after { content: "▾"; color: var(--muted); margin-left: 6px; font-size: 12px; }
+  details.card:not([open]) > summary::after { content: "▸"; }
+  details.card[open] > summary { margin-bottom: 8px; }
+
+  button { background: var(--line); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:disabled { opacity: .45; cursor: default; border-color: var(--line2); }
+  button.active { background: var(--text); color: var(--bg); }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  button.small, select.small { font-size: 12px; padding: 3px 9px; }
+  button.ghost { background: transparent; }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 8px; }
+  .seg { display: inline-flex; }
+  .seg button { border-radius: 0; }
+  .seg button + button { border-left: 0; }
+  .seg button:first-child { border-radius: 6px 0 0 6px; }
+  .seg button:last-child { border-radius: 0 6px 6px 0; }
+  .seg button.active.marker { background: #0e7490; color: #fff; border-color: #0e7490; }
+  .seg button.active.obstacle { background: var(--red); color: #fff; border-color: var(--red); }
+  .line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .seg.icons button { padding: 4px 9px; line-height: 0; }
+  .seg.icons button svg { display: block; }
+  #yolo { font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 4px 9px; }
+  #yolo.active { background: #ff9800; border-color: #ff9800; color: #1c1002; }
+  .battery small { font-weight: 500; opacity: .9; }
+  #modes button { font-size: 12px; font-weight: 600; padding: 4px 10px; }
+  #modes button.active[data-mode="driver"] { background: var(--green); border-color: var(--green); color: #052e12; }
+  #match { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 5px 12px; }
+  #match.auto { background: #1e3a8a; border-color: var(--blue); color: #dbeafe; }
+  #match.driver { background: #14532d; border-color: var(--green); color: #dcfce7; }
+  .drivepad { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; margin-top: 10px; padding: 10px;
+    border: 1px solid var(--green); border-radius: 8px; background: rgba(34,197,94,.06); }
+  .pad { display: grid; grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 38px); gap: 4px; }
+  .pad button, .turns button { padding: 0; font-size: 18px; touch-action: none; user-select: none; }
+  .pad button.on, .turns button.on { background: var(--green); color: #052e12; border-color: var(--green); }
+  .turns { display: grid; grid-template-columns: 38px 38px; gap: 4px; }
+  .turns button { height: 38px; }
+  .drivectl { display: flex; flex-direction: column; gap: 8px; }
+  button.kick { background: var(--orange); border-color: var(--orange); color: #1c1002; font-weight: 800; letter-spacing: .08em; }
+  .controllers { display: grid; gap: 8px; }
+  .ctl { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
+  .ctl.on { border-color: var(--green); }
+  .ctl b { display: block; font-size: 13px; }
+  .stickviz { flex: none; position: relative; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line2); }
+  .keycap { flex: none; width: 34px; text-align: center; font-size: 20px; }
+  .stickviz i { position: absolute; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: var(--green); left: 50%; top: 50%; }
+  #hudRace { left: 50%; bottom: 10px; transform: translateX(-50%); }
+  #hudRace.win { background: rgba(34,197,94,.9); color: #052e12; }
+  #hudRace.lose { background: rgba(239,68,68,.9); color: #fff; }
+  #hudDriver { left: 50%; top: 36px; transform: translateX(-50%); background: rgba(34,197,94,.9); color: #052e12; }
+
+  /* the camera card: video, the AI layer, the minimap, a small heads-up display, and a click layer on top */
+  .stage { position: relative; line-height: 0; border-radius: 6px; overflow: hidden; background: #000; }
+  .stage img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+  .stage.nofeed { aspect-ratio: 4 / 3; }
+  .stage.nofeed img { display: none; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage canvas#minimap { inset: auto; left: 10px; bottom: 10px; width: 32%; max-width: 230px; height: auto; aspect-ratio: 1;
+    z-index: 2; cursor: zoom-out; transition: transform .25s ease, opacity .25s ease; transform-origin: 0 100%; }
+  .stage canvas#minimap.tucked { transform: scale(.2); opacity: 0; pointer-events: none; }
+  .radar { position: absolute; left: 10px; bottom: 10px; z-index: 2; width: 46px; height: 46px; padding: 0; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.6); background: rgba(10,12,14,.75); overflow: hidden; cursor: zoom-in; }
+  .radar::before { content: ""; position: absolute; inset: 0; animation: sweep 2.2s linear infinite;
+    background: conic-gradient(from 0deg, rgba(34,197,94,0) 0deg, rgba(34,197,94,.65) 70deg, rgba(34,197,94,0) 71deg); }
+  .radar::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--green); }
+  .radar b { position: absolute; right: 3px; top: 3px; min-width: 15px; height: 15px; border-radius: 999px; background: var(--blue);
+    color: #fff; font-size: 10px; line-height: 15px; z-index: 1; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  .stage canvas#overlay { cursor: crosshair; }
+  .hud { position: absolute; inset: 0; pointer-events: none; line-height: 1.3; font-size: 12px; font-weight: 600; }
+  .hud span { position: absolute; padding: 3px 9px; border-radius: 999px; background: rgba(10,12,14,.72); color: var(--text); }
+  #hudRate { right: 10px; bottom: 10px; color: var(--muted); }
+  #hudHold { left: 10px; top: 36px; background: rgba(34,197,94,.85); color: #062e14; }
+  #hudTask { right: 10px; top: 36px; background: rgba(234,179,8,.9); color: #1c1402; }
+  #hudTask::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1c1402; margin-right: 6px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  #hudMsg { left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 6px; padding: 8px 14px; color: var(--muted); font-weight: 500; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  #inspector { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  .kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; }
+  #log { flex: 1 1 0; min-height: 0; overflow-y: auto; font-size: 13px; }
+  #log li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .who { display: inline-block; min-width: 52px; font-weight: 600; }
+  .who.you { color: var(--yellow); } .who.claude { color: #c084fc; } .who.robot { color: var(--green); }
+
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin-bottom: 0; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; }
+  .tabs button { border: 0; background: transparent; border-radius: 7px; padding: 7px 6px; font-weight: 600; color: var(--muted); }
+  .tabs button b { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 6px; border-radius: 50%;
+    background: var(--line2); color: var(--text); font-size: 12px; }
+  .tabs button.active { background: var(--line); color: var(--text); }
+  .tabs button.active b { background: var(--blue); color: #fff; }
+
+  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .team { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px 10px;
+    border-radius: 12px; border: 2px solid var(--line); transition: transform .15s, box-shadow .2s; }
+  .team:hover { transform: translateY(-2px); border-color: var(--muted); }
+  .team svg { width: 48px; height: 48px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.45)); }
+  .team b { font-size: 14px; letter-spacing: .03em; }
+  .team .goalinfo { font-size: 12px; color: var(--muted); }
+  .team.blue { background: linear-gradient(160deg, rgba(59,130,246,.22), rgba(59,130,246,.04)); } .team.blue svg { fill: var(--blue); }
+  .team.orange { background: linear-gradient(160deg, rgba(245,158,11,.22), rgba(245,158,11,.04)); } .team.orange svg { fill: var(--orange); }
+  .team.blue.active { background: linear-gradient(160deg, #3b82f6, #1e3a8a); border-color: #93c5fd; box-shadow: 0 0 24px rgba(59,130,246,.55); color: #fff; }
+  .team.orange.active { background: linear-gradient(160deg, #f59e0b, #9a3412); border-color: #fcd34d; box-shadow: 0 0 24px rgba(245,158,11,.55); color: #fff; }
+  .team.active svg { fill: #fff; }
+  .team.active .goalinfo { color: rgba(255,255,255,.88); }
+  .team.active::after { content: "✓"; position: absolute; top: 7px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; color: #111; font-size: 12px; line-height: 20px; font-weight: 800; }
+  button.ghost.active { background: var(--text); color: var(--bg); }
+
+  .tagrow { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+  .tagrow:hover { background: var(--line); }
+  .tagrow:last-child { border-bottom: 0; }
+  .tagid { flex: none; width: 26px; height: 26px; border-radius: 4px; background: #f5f5f5; color: #111; font-weight: 800;
+    display: grid; place-items: center; box-shadow: inset 0 0 0 3px #111, inset 0 0 0 4px #f5f5f5; font-size: 12px; }
+  .tname { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+  .tname small { font-size: 12px; color: var(--muted); }
+  .tname i { font-size: 12px; color: #a5f3fc; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .role { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+  .role.marker { background: #0e7490; color: #fff; } .role.obstacle { background: var(--red); color: #fff; }
+
+  .rosterrow { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  .rosterrow.sel { background: rgba(59,130,246,.12); border-radius: 6px; }
+  .rosterrow button { margin-left: 4px; }
+  .pairhead { padding: 8px 4px 2px; align-items: center; }
+  .scanlist { max-height: 190px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+  .scanrow { cursor: pointer; padding: 5px 2px; border-bottom: 1px solid var(--line); }
+  .scanrow:last-child { border-bottom: 0; }
+  .scanrow:hover { background: var(--line); }
+  .scanrow.no { opacity: .5; cursor: default; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 1px; height: 11px; margin-right: 2px; }
+  .bars i { width: 3px; background: var(--line2); border-radius: 1px; }
+  .bars i.on { background: var(--green); }
+  .reacts { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .reacts button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 22px; line-height: 1; }
+  .reacts button span { font-size: 12px; color: var(--muted); }
+  .plays { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plays .line { grid-column: 1 / -1; }
+  .advice { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .abil { display: grid; grid-template-columns: 62px 1fr auto auto auto; gap: 8px; align-items: center; padding: 5px 0; }
+  .abil b { font-weight: 600; }
+  .bar { position: relative; height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, #16a34a, #4ade80); }
+  .bar i.spread { background: rgba(74,222,128,.25); }
+  .val { font-variant-numeric: tabular-nums; text-align: right; min-width: 70px; }
+  .val small { display: block; font-size: 12px; color: var(--muted); }
+  #kickAsk { margin-top: 8px; padding: 10px; border: 1px solid var(--yellow); border-radius: 6px; background: rgba(234,179,8,.08); display: flex; flex-direction: column; gap: 6px; }
+  .verdict { padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; }
+  .verdict.ok { background: rgba(34,197,94,.14); border: 1px solid rgba(34,197,94,.5); }
+  .verdict.no { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.45); }
+  table.race { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+  table.race th { font-size: 12px; color: var(--muted); font-weight: 600; text-align: left; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  table.race td { padding: 4px 0; border-bottom: 1px solid var(--line); }
+
+  #map { display: block; width: 100%; height: clamp(320px, 58vh, 640px); background: var(--bg); border-radius: 6px; cursor: pointer; }
+  @media (max-width: 900px) { #map { height: auto; aspect-ratio: 1; } }
+  .pop { position: fixed; z-index: 30; width: 340px; background: var(--card); border: 1px solid var(--line2); border-radius: 10px;
+    padding: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.55); display: flex; flex-direction: column; gap: 9px; }
+  .pop label { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .pop input, .pop textarea { width: 100%; color: var(--text); }
+  .pop textarea { resize: vertical; }
+  .pophead { display: flex; align-items: center; gap: 8px; }
+  .pophead b { flex: 1; }
+  .dialog-back { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
+  .dialog { width: min(420px, 100%); background: var(--card); border: 1px solid var(--line2); border-radius: 12px; padding: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 12px; }
+  .dialog h3 { margin: 0; font-size: 16px; }
+  .dialog p { margin: 0; color: var(--muted); }
+  .dialog label { display: grid; grid-template-columns: 1fr 150px; gap: 8px; align-items: center; }
+  .dialog input, .dialog select { width: 100%; }
+  .dialog .line { justify-content: flex-end; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--red); color: #fff; padding: 8px 14px; border-radius: 6px; z-index: 40; }
+  #toast.ok { background: #15803d; }
+</style>
+</head>
+<body>
+<header>
+  <h1>VEX AIM control panel</h1>
+  <button class="status" id="netBtn" title="Wi-Fi: remember networks, and switch robots to another one" style="background:none;border:0;padding:0">
+    <span class="dot" id="conn"></span><span id="connText">connecting…</span><span class="muted">▾</span></button>
+  <span class="battery" id="battery" title="Battery">
+    <svg viewBox="0 0 32 16" width="32" height="16" aria-hidden="true">
+      <rect class="shell" x="1" y="1" width="26" height="14" rx="3.5"/><rect class="nub" x="28" y="5" width="3" height="6" rx="1.2"/>
+      <rect id="batFill" x="3" y="3" width="0" height="10" rx="2"/>
+      <path id="batBolt" d="M15.5 1.8 L9.5 9 H14 L12.5 14.2 L19 6.6 H14.6 Z" style="display:none"/>
+    </svg><span id="batText">–</span></span>
+  <span class="chip" id="teamBadge" role="button" tabindex="0" title="Change the player's name or team" style="cursor:pointer"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 12 L2 26 L12 30 L15 24 L15 58 L49 58 L49 24 L52 30 L62 26 L56 12 L44 6 Q40 15 32 15 Q24 15 20 6 Z"/></svg><span>No team</span></span>
+  <span style="flex:1"></span>
+  <button id="match" title="Start a match: an autonomous period, then driver control">▶ Match</button>
+  <button id="motion" title="Unlock once the robot is on the floor with clear space around it">🔒 Motion locked</button>
+  <button class="stop" id="stop" title="Stop all motion, and whatever the robot is doing by itself">STOP</button>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <div class="cardhead"><h2>Camera</h2>
+        <span class="controls">
+          <span class="seg" id="modes" title="Auto: the robot (routines, plays, Claude) drives. Driver: you drive from here.">
+            <button data-mode="auto">🤖 Auto</button><button data-mode="driver">🎮 Driver</button><button id="ctlMenu" title="Controllers: game controller, AIM controller, keyboard">▾</button></span>
+          <span class="seg icons" id="views">
+            <button data-view="camera" title="Camera: the live picture, as everyone around the robot sees it"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.6l1.6-2h6.6l1.6 2h2.6A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.4"/></svg></button>
+            <button data-view="both" title="Camera + AI: what the robot's AI recognises, drawn over the live picture"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5V5a2 2 0 0 1 2-2h2.5M16.5 3H19a2 2 0 0 1 2 2v2.5M21 16.5V19a2 2 0 0 1-2 2h-2.5M7.5 21H5a2 2 0 0 1-2-2v-2.5"/><path d="M7 10.3a1 1 0 0 1 1-1h1.4l1-1.3h3.2l1 1.3H16a1 1 0 0 1 1 1v4.9a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/><circle cx="12" cy="12.7" r="1.7"/></svg></button>
+            <button data-view="ai" title="AI only: just what the AI recognises. No video over Wi-Fi, and faster updates"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5V5a2 2 0 0 1 2-2h2.5M16.5 3H19a2 2 0 0 1 2 2v2.5M21 16.5V19a2 2 0 0 1-2 2h-2.5M7.5 21H5a2 2 0 0 1-2-2v-2.5"/><rect x="7" y="7.5" width="4.5" height="9" rx="1.2" fill="currentColor" stroke="none"/><circle cx="15.3" cy="13.2" r="2.8" fill="currentColor" stroke="none"/></svg></button>
+          </span>
+          <button id="yolo" title="YOLO: a second opinion from a bigger AI on this computer (people, cups, chairs…); its finds are dashed orange">YOLO</button>
+        </span></div>
+      <div class="stage">
+        <img id="video" alt="Live video from the robot's camera">
+        <canvas id="layer"></canvas>
+        <canvas id="minimap" title="Click to tuck the radar away"></canvas>
+        <button id="radar" class="radar" title="Show the radar (minimap)" hidden></button>
+        <div class="hud"><span id="hudRace" hidden></span><span id="hudDriver" hidden></span><span id="hudHold" hidden></span><span id="hudTask" hidden></span><span id="hudRate" hidden></span><span id="hudMsg" hidden></span></div>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div class="toolbar">
+        <button id="modeSelect" class="active">Select &amp; label</button>
+        <button id="modeColour">Teach a colour</button>
+        <span class="muted small" id="modeHint">Click an object to label it or point it out to Claude.</span>
+      </div>
+      <div id="drivePad" class="drivepad" hidden>
+        <div class="pad" id="pad">
+          <button data-v="-1,1,0" title="Forward-left">↖</button><button data-v="0,1,0" title="Forward (W)">↑</button><button data-v="1,1,0" title="Forward-right">↗</button>
+          <button data-v="-1,0,0" title="Left (A)">←</button><button disabled>●</button><button data-v="1,0,0" title="Right (D)">→</button>
+          <button data-v="-1,-1,0" title="Back-left">↙</button><button data-v="0,-1,0" title="Back (S)">↓</button><button data-v="1,-1,0" title="Back-right">↘</button>
+        </div>
+        <div class="turns" id="turns"><button data-v="0,0,-1" title="Turn left (Q)">⟲</button><button data-v="0,0,1" title="Turn right (E)">⟳</button></div>
+        <div class="drivectl">
+          <div class="line"><span class="small muted">Speed</span><input id="driveSpeed" type="range" min="20" max="100" value="60" style="flex:1">
+            <span class="small" id="driveSpeedText">60%</span></div>
+          <div class="line"><button id="driveKick" class="kick">KICK</button><select id="kickPower" class="small"><option>soft</option>
+            <option selected>medium</option><option>hard</option></select><span class="help" tabindex="0" data-tip="Hold a button to drive: the robot stops the moment you let go. Keyboard: W A S D or arrows move, Q E turn, Space kicks, hold Shift for slow.">?</span></div>
+        </div>
+      </div>
+      <div id="inspector" hidden></div>
+    </div>
+    <div class="card" id="logCard"><div class="cardhead"><h2 class="toggle" id="logToggle" role="button" tabindex="0" aria-expanded="true">What happened</h2></div>
+      <ul id="log"></ul></div>
+  </section>
+  <aside>
+    <nav class="tabs" id="tabs">
+      <button data-tab="explore"><b>1</b>Explore</button>
+      <button data-tab="teams"><b>2</b>Teams</button>
+      <button data-tab="strategy"><b>3</b>Strategy</button>
+    </nav>
+
+    <div class="tab" data-tab="explore">
+      <div class="card">
+        <div class="cardhead"><h2>Map the arena</h2></div>
+        <div class="line"><button id="scanHere" title="Turn a full circle here, putting everything it sees on the map">Scan here</button>
+          <button id="explore" title="Drive a grid across the chosen field, scanning at each spot">Explore the field</button></div>
+        <div class="muted small" id="exploreNote" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>AprilTags</h2><button id="tags" class="small" title="AprilTag detection on the robot">Off</button></div>
+        <div class="muted small" id="tagHint"></div>
+        <ul id="tagList"></ul>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Camera range<span class="help" tabindex="0" data-tip="Distance comes from how big an object looks. To measure it, click an object, enter its real distance from the camera and press Record. A near and a far measurement make it accurate.">?</span></h2></div>
+        <ul id="range"></ul>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Taught colours</h2></div>
+        <ul id="colours"></ul>
+      </div>
+    </div>
+
+    <div class="tab" data-tab="teams" hidden>
+      <div class="card">
+        <div class="cardhead"><h2>Player<span class="help" tabindex="0" data-tip="The robot's player name. It goes on the robot's screen in its team colour, so everyone can tell the players apart, and Claude uses it too.">?</span></h2></div>
+        <div class="line"><input id="playerName" maxlength="16" placeholder="Player name, e.g. Striker" style="flex:1">
+          <button id="playerSave" class="primary">Show on robot</button></div>
+        <div class="cardhead" style="margin:14px 0 8px"><h2>Reactions<span class="help" tabindex="0" data-tip="Faces on the robot's screen, for goals, misses and good passes. They go back to neutral after 5 seconds.">?</span></h2></div>
+        <div class="reacts" id="reacts">
+          <button data-face="excited" title="Scored!">😄<span>Goal</span></button>
+          <button data-face="sad" title="Missed">😢<span>Miss</span></button>
+          <button data-face="wink" title="A good pass">😉<span>Pass</span></button>
+          <button data-face="surprised" title="Bumped or surprised">😮<span>Whoa</span></button>
+          <button data-face="focused" title="Concentrating">😠<span>Focus</span></button>
+          <button data-face="happy" title="The resting face: reactions come back to it after 5 seconds">🙂<span>Neutral</span></button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Team<span class="help" tabindex="0" data-tip="A team scores between the two barrels of its colour.">?</span></h2>
+          <button class="ghost small" id="teamNone">No team</button></div>
+        <div class="teams">
+          <button class="team blue" id="teamBlue"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 12 L2 26 L12 30 L15 24 L15 58 L49 58 L49 24 L52 30 L62 26 L56 12 L44 6 Q40 15 32 15 Q24 15 20 6 Z"/></svg>
+            <b>Blue</b><span class="goalinfo" id="goalBlue">goal not seen yet</span></button>
+          <button class="team orange" id="teamOrange"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 6 L8 12 L2 26 L12 30 L15 24 L15 58 L49 58 L49 24 L52 30 L62 26 L56 12 L44 6 Q40 15 32 15 Q24 15 20 6 Z"/></svg>
+            <b>Orange</b><span class="goalinfo" id="goalOrange">goal not seen yet</span></button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Team list<span class="help" tabindex="0" data-tip="The robots on your team. The highlighted one is the robot this panel shows and drives, and the one Claude's tools use. Find robots looks for others on this Wi-Fi network, to pair with.">?</span></h2><span class="controls">
+          <button id="teamFind" class="small primary" title="Look for AIM robots on this Wi-Fi network, to pair with the team">🔍 Find robots</button>
+          <button id="teamConnect" class="small" title="Connect every robot on the list">Connect all</button>
+          <button id="teamLabel" class="small" title="Show each player's card on its robot">Label all</button></span></div>
+        <ul id="roster"></ul>
+        <div id="lookingFor" class="small muted" hidden></div>
+        <ul id="pairList"></ul>
+        <details class="small" style="margin-top:8px"><summary class="muted" style="cursor:pointer">Add a robot by its address</summary>
+          <div class="line" style="margin-top:6px"><input id="addName" maxlength="16" placeholder="Name" style="width:96px">
+            <input id="addHost" placeholder="Robot's IP" title="A robot shows its IP on its screen, under Settings → Radio" style="flex:1;min-width:110px">
+            <select id="addTeam" class="small"><option value="">no team</option><option value="blue">blue</option><option value="orange">orange</option></select>
+            <button id="addPlayer" class="small">Add</button></div>
+        </details>
+      </div>
+    </div>
+
+    <div class="tab" data-tab="strategy" hidden>
+      <div class="card">
+        <div class="cardhead"><h2>Plays</h2></div>
+        <div class="plays" id="plays">
+          <button data-play="fetch" title="Find the ball and get it into the kicker">⚽ Fetch the ball</button>
+          <button data-play="score" title="Get the ball, line up between our goal's posts and kick">🥅 Score a goal</button>
+          <button data-play="go_to" title="Then click the map where it should go">📍 Go to…</button>
+          <button data-play="pass_to" title="Then click the map where the ball should go">➡️ Pass to…</button>
+          <span class="line"><button data-play="guard" title="Play goalkeeper in front of the goal the other team scores in">🧤 Guard the goal</button>
+            <input id="guardSecs" class="small" type="number" min="5" max="120" value="30" style="width:56px"><span class="small muted">s</span></span>
+        </div>
+        <div class="muted small" id="playsNote" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Kick reach<span class="help" tabindex="0" data-tip="Put the ball in the kicker, point the robot at open floor and unlock motion, then Test. The camera watches the ball roll; if it rolls out of view, measure it and enter it with “+ cm”.">?</span></h2></div>
+        <div id="kicks"></div>
+        <div id="kickAsk" hidden></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Driving speed<span class="help" tabindex="0" data-tip="Needs that much clear floor straight ahead; the robot drives back afterwards.">?</span></h2></div>
+        <div id="drives"></div>
+        <div class="line" style="margin-top:6px"><select id="speedPct" class="small"></select><span class="small muted">over</span>
+          <input id="speedDist" class="small" type="number" min="10" max="100" value="50" style="width:64px"><span class="small muted">cm</span>
+          <button id="speedTest" class="small">Test</button></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Pass, shoot or dribble?</h2></div>
+        <div id="decide"></div>
+      </div>
+    </div>
+
+  </aside>
+  <div class="card mapcard">
+    <div class="cardhead"><h2>Map<span class="help" tabindex="0" data-tip="● seen now · ○ remembered · ▢ AprilTag (a ring: pinned to the field) · red zone: an obstacle · dashed: direction only. Click a tag to define it. On a field, start the robot facing up the field.">?</span></h2>
+      <span class="controls"><select id="field" class="small"></select>
+        <button id="placeRobot" class="small" title="Then click the map where the robot is now">Place robot</button>
+        <button id="clearMap" class="small">Clear</button></span></div>
+    <canvas id="map"></canvas>
+    <div class="kv small"><span id="pos" class="muted">–</span><span id="posNote" class="muted"></span></div>
+  </div>
+</main>
+<div id="tagPop" class="pop" hidden></div>
+<div id="netPop" class="pop" hidden style="width:400px">
+  <div class="pophead"><b>Wi-Fi networks</b><button class="ghost small" id="netClose" title="Close">✕</button></div>
+  <div class="small muted" id="netRobot">Reading the robot's setup page…</div>
+  <div id="netHotspotNote" class="small" hidden></div>
+  <div class="line small"><span class="muted">Switch</span>
+    <select id="netTarget" class="small" title="Which robots the Switch buttons move"><option value="this">this robot</option>
+      <option value="team">the whole team</option></select><span class="muted">to:</span></div>
+  <ul id="netNets"></ul>
+  <div class="cardhead" style="margin:4px 0 0"><h2>Add a network<span class="help" tabindex="0" data-tip="Scan lists the networks near this Mac. The first time, macOS asks you to let “AIM Wi-Fi Scan” use Location Services: that's how macOS guards Wi-Fi names, and no location is kept. Robots need 2.4 GHz.">?</span></h2>
+    <button id="netScan" class="small">📡 Scan</button></div>
+  <ul id="netScanList" class="scanlist" hidden></ul>
+  <label>Network<input id="netName" list="netKnown" maxlength="20" autocomplete="off" placeholder="scan, or pick one this Mac has joined"></label>
+  <datalist id="netKnown"></datalist>
+  <div class="small muted" id="netNameNote"></div>
+  <label>Password<span class="line" style="flex-wrap:nowrap;gap:4px"><input id="netPass" type="password" maxlength="20" autocomplete="off"
+    placeholder="8 to 20 characters; empty if open" style="flex:1;min-width:0"><button id="netShow" class="small ghost" title="Show or hide the password">👁</button></span></label>
+  <div class="line" style="justify-content:flex-end"><button id="netMacPass" class="small ghost" hidden title="Use the password this Mac saved for it. macOS asks for your Mac's password first">🔑 From this Mac</button>
+    <button id="netSave" class="small" title="Keep it for later: the password goes in this Mac's keychain">Remember network</button>
+    <button id="netMove" class="small primary">Switch…</button></div>
+  <details class="small muted"><summary style="cursor:pointer">Tips: which networks work, and if a robot gets lost</summary>
+    <ul style="list-style:disc;padding-left:18px;margin:6px 0 0">
+      <li>The list is the networks this Mac has joined: macOS hides nearby networks' names from apps, and robots can't scan.
+        At a venue, join its Wi-Fi on this Mac first (you need to anyway): it's then at the top of the list.</li>
+      <li>AIM robots join <b>2.4 GHz</b> Wi-Fi only (channels 1–11), with WPA2: a name up to 20 characters and a password of 8–20.</li>
+      <li>No sign-in pages, school or "enterprise" logins, and no guest networks that keep devices apart.</li>
+      <li>Setting up a robot, or one that can't join anything: put it on its own hotspot (here, or on its screen: Settings → Radio →
+        Access Point), join its AIM-… Wi-Fi on this Mac (the password is on its screen), then switch it to a network here.
+        On the robot's hotspot this Mac has no internet, so Claude can't reply until it's back on a network, but this panel works.</li>
+      <li>For competitions, bring a travel router: set every robot to it once, at home, and reserve each robot's address in the
+        router. Then nothing about the robots changes at a new venue.</li>
+    </ul></details>
+</div>
+<div id="ctlPop" class="pop" hidden style="position:absolute">
+  <div class="pophead"><b>Controllers</b><span class="muted small">for Driver mode</span><button class="ghost small" id="ctlClose" title="Close">✕</button></div>
+  <div id="controllers" class="controllers"></div>
+</div>
+<div id="toast" hidden></div>
+<script>
+const TOKEN = "__PANEL_TOKEN__";
+const RULER = __RULER__;    // [bearing°, x in the 640-wide frame]
+const FIELDS = __FIELDS__;  // playing fields, in mm: {name, w, l, tile, tile_label}
+const $ = (s) => document.querySelector(s);
+const FRAME_W = 640, FRAME_H = 480;
+const FONT = getComputedStyle(document.documentElement).getPropertyValue("--font").trim();
+const KIND_COLOURS = { BlueBarrel: "#3b82f6", OrangeBarrel: "#f59e0b", SportsBall: "#eab308", Robot: "#a3a3a3" };
+const SHORT = { SportsBall: "ball", BlueBarrel: "blue", OrangeBarrel: "orange", Robot: "robot" };
+const STRENGTHS = ["soft", "medium", "hard"];
+let S = null, since = 0, mode = "select", sel = null, drag = null, stalled = 0, placing = null, mapView = null, mapHits = [];
+
+// ---------------------------------------------------------------- helpers
+async function api(action, body) {
+  const r = await fetch("/api/" + action, { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Panel-Token": TOKEN }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) toast(j.error || ("Error " + r.status));
+  return j;
+}
+function toast(msg, ok = false) {
+  const t = $("#toast"); t.textContent = msg; t.className = ok ? "ok" : ""; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 4500);
+}
+const fmtB = (b) => (Math.round(b) === 0 ? "0°" : (b > 0 ? "+" : "") + Math.round(b) + "°");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const cm = (mm) => Math.round(mm / 10);
+const shortName = (s) => (s.includes("“") ? s.split("“")[1].replace("”", "") : s);
+const nick = (o) => (o.display.includes("“") ? shortName(o.display) : SHORT[o.name] || o.display);
+const tagLabel = (id) => (S.labels.find((e) => e.tag === id) || {}).label;
+function swatch(d) {
+  if (d.kind === "color") { const c = S.colours[d.id]; return c ? `rgb(${c.rgb.join(",")})` : "#ccc"; }
+  if (d.kind === "apriltag") return "#f5f5f5";
+  if (d.source === "yolo") return "#ff9800";
+  return KIND_COLOURS[d.name] || "#22c55e";
+}
+function fit(c) {  // match a canvas to its size on screen (times device pixels): crisp lines, same-size text everywhere
+  const k = window.devicePixelRatio || 1, w = Math.round(c.clientWidth * k), h = Math.round(c.clientHeight * k);
+  if (w > 0 && h > 0 && (c.width !== w || c.height !== h)) { c.width = w; c.height = h; }
+  return k;
+}
+const setFont = (g, k, size, weight = 500) => { g.font = `${weight} ${size * k}px ${FONT}`; };
+const sigs = new Map();
+function setHtml(el, html) { if (sigs.get(el) !== html) { el.innerHTML = html; sigs.set(el, html); } }  // only when it changed, so clicks aren't lost
+function pill(g, k, text, x, y, accent, placed, below) {  // a label on a dark tab, kept inside the canvas
+  setFont(g, k, 12); g.textAlign = "left"; g.textBaseline = "alphabetic";
+  const W = g.canvas.width, tw = g.measureText(text).width + 14 * k, th = 18 * k;
+  const tx = Math.min(W - tw - 2 * k, Math.max(2 * k, x));
+  let ty = Math.max(24 * k, y);
+  if (placed) {  // don't cover another label: stack above it, or go below the object
+    const clear = (t) => t >= 24 * k && !placed.some((r) => tx < r.x + r.w && tx + tw > r.x && t < r.y + r.h && t + th > r.y);
+    ty = [ty, ty - th - 3 * k, ty - 2 * (th + 3 * k), below, below + th + 3 * k].find((t) => t != null && clear(t)) ?? ty;
+    placed.push({ x: tx, y: ty, w: tw, h: th });
+  }
+  g.fillStyle = "rgba(10,12,14,.8)"; g.beginPath();
+  if (g.roundRect) g.roundRect(tx, ty, tw, th, 4 * k); else g.rect(tx, ty, tw, th);
+  g.fill();
+  if (accent) { g.fillStyle = accent; g.fillRect(tx + 3 * k, ty + 4 * k, 3 * k, th - 8 * k); }
+  g.fillStyle = "#e6e8ea"; g.fillText(text, tx + 10 * k, ty + 13 * k);
+}
+
+// An in-page dialog: the app's built-in browser doesn't show confirm()/prompt() pop-ups. Resolves to
+// false (cancelled), true (confirmed), or the fields' values when fields are given: [[key, label, default], …].
+function ask(title, text, okText, fields = []) {  // fields: [key, label, value, type = "number", options for a "select": [[value, label], …]]
+  return new Promise((resolve) => {
+    const back = document.createElement("div"); back.className = "dialog-back";
+    back.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(text)}</p>` +
+      fields.map(([key, label, value, type = "number", options = []]) => `<label>${esc(label)}${type === "select"
+        ? `<select data-key="${key}">${options.map(([v, l]) => `<option value="${esc(v)}" ${v === value ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`
+        : `<input type="${type}" ${type === "number" ? 'min="0"' : 'maxlength="20" autocomplete="off"'} data-key="${key}" value="${esc(value)}">`}</label>`).join("") +
+      `<div class="line"><button data-a="no">Cancel</button><button data-a="yes" class="primary">${esc(okText)}</button></div></div>`;
+    const done = (yes) => {
+      back.remove();
+      if (!yes) return resolve(false);
+      if (!fields.length) return resolve(true);
+      resolve(Object.fromEntries([...back.querySelectorAll("[data-key]")].map((i) => [i.dataset.key, i.value])));
+    };
+    back.addEventListener("click", (ev) => { if (ev.target === back || ev.target.dataset.a === "no") done(false); if (ev.target.dataset.a === "yes") done(true); });
+    back.addEventListener("keydown", (ev) => { if (ev.key === "Escape") done(false); if (ev.key === "Enter") done(true); });
+    document.body.appendChild(back);
+    (back.querySelector("input, select") || back.querySelector("[data-a=yes]")).focus();
+  });
+}
+
+// ---------------------------------------------------------------- polling and rendering
+async function poll() {
+  try {
+    const r = await fetch("/state.json?since=" + since, { cache: "no-store" });
+    const s = await r.json();
+    if (s.event_seq < since) { since = 0; $("#log").innerHTML = ""; }  // the panel restarted
+    S = s; since = s.event_seq; render();
+  } catch (e) { $("#conn").classList.remove("on"); $("#connText").textContent = "panel not responding"; }
+  setTimeout(poll, view === "camera" ? 300 : 100);
+}
+
+let lastFull = 0;
+function render(force = false) {  // the picture's layers on every poll; the side cards and the map about three times a second
+  const R = S.robot, full = force || view === "camera" || performance.now() - lastFull > 280;
+  renderHeader(R); renderHud(R); renderLog();
+  stalled = view !== "ai" && R.connected && S.fps === 0 ? stalled + 1 : 0;  // reopen the video if frames stop
+  if (stalled >= (view === "camera" ? 8 : 24)) { stalled = 0; $("#video").src = "/stream.mjpg?" + Date.now(); }
+  drawLayer(); drawOverlay(); drawMinimap();
+  if (!full) return;
+  lastFull = performance.now();
+  renderPosition(R); renderExplore(R); renderRange(); renderColours(); renderTags(R);
+  renderTeams(); renderPlayer(); renderRoster(); renderLooking(); renderStrategy(); renderPlays();
+  drawMap();
+}
+
+function renderHeader(R) {
+  $("#conn").classList.toggle("on", R.connected);
+  $("#connText").textContent = R.connected ? R.host : S.released ? "let go" : "not connected";  // short: the header stays one line
+  $("#connText").title = R.connected ? "" : R.problem || "";
+  renderBattery(R);
+  const tb = $("#teamBadge"); tb.className = "chip " + (S.team || "");
+  tb.lastElementChild.textContent = (S.player ? S.player + " · " : "") + (S.team ? cap(S.team) + " team" : "No team");
+  for (const [id, t] of [["#teamBlue", "blue"], ["#teamOrange", "orange"], ["#teamNone", null]]) $(id).classList.toggle("active", S.team === t);
+  $("#yolo").classList.toggle("active", S.yolo.enabled);
+  renderMode(R);
+  const m = $("#motion"); m.classList.toggle("unlocked", !!R.motion_enabled);
+  m.textContent = R.motion_enabled ? "Motion unlocked" : "🔒 Motion locked";
+  m.title = R.motion_enabled ? "Click to lock the robot's motion" : "Unlock once the robot is on the floor with clear space around it";
+}
+
+// the battery gauge: green, then yellow, then red and pulsing; a bolt once the level has risen (charging)
+// The robot doesn't say whether it's plugged in, so the panel reads it from the level rising (charging) or
+// falling, and estimates the time to full or to flat from the last 20 minutes.
+const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`);
+function renderBattery(R) {
+  const pct = R.connected && Number.isFinite(R.battery) ? Math.max(0, Math.min(100, Math.round(R.battery))) : null;
+  const tr = S.battery_trend || {}, charging = pct !== null && tr.charging === true;
+  $("#battery").className = "battery " + (pct === null ? "" : charging ? "ok" : pct <= 15 ? "low" : pct <= 40 ? "mid" : "ok");
+  $("#batFill").setAttribute("width", pct ? Math.max(1.5, 22 * pct / 100).toFixed(1) : 0);
+  $("#batBolt").style.display = charging ? "" : "none";
+  const left = pct === null ? "" : charging ? (pct >= 99 ? "full" : tr.minutes_to_full != null ? `full in ${fmtMin(tr.minutes_to_full)}` : "charging")
+    : tr.minutes_left != null ? `${fmtMin(tr.minutes_left)} left` : tr.steady ? "steady" : "measuring…";
+  $("#batText").innerHTML = pct === null ? "–" : `${pct}%${left ? ` <small>· ${left}</small>` : ""}`;
+  $("#battery").title = pct === null ? "Battery: not connected"
+    : charging ? `Plugged in and charging (${tr.pct_per_min}% a minute)`
+    : tr.charging === false ? `On battery, using ${-tr.pct_per_min}% a minute` + (pct <= 15 ? ": charge it soon" : "")
+    : tr.steady ? `Battery ${pct}%, holding steady for ${Math.round(tr.watching_min)} min: probably plugged in, charging about as fast as it's used`
+    : `Battery ${pct}%. Watching the level for a few minutes to tell whether it's charging and how long it will last.`;
+}
+
+function renderHud(R) {  // the few readouts that live on the picture itself
+  const ai = view !== "camera";
+  $("#hudRate").hidden = !ai || !R.connected;
+  const yolo = S.detections.filter((d) => d.source === "yolo").length;
+  $("#hudRate").textContent = view === "ai" ? `AI · ${S.status_hz} updates/s`
+    : `${S.fps} fps` + (S.yolo.enabled ? (S.yolo.ready ? ` · YOLO: ${yolo || "nothing"} found` : " · YOLO loading (about 10 s)…") : "");
+  $("#hudHold").hidden = !ai || !R.connected || !R.holding;
+  if (R.holding) $("#hudHold").textContent = `Holding the ${SHORT[R.holding] || R.holding}`;
+  $("#hudTask").hidden = !S.routine;
+  if (S.routine) $("#hudTask").textContent = `${cap(S.routine.name)} · ${S.routine.text}`;
+  const rc = ai && R.connected ? race() : null;
+  $("#hudRace").hidden = !rc;
+  if (rc) {
+    $("#hudRace").className = rc.them ? (rc.us <= rc.them.t ? "win" : "lose") : "";
+    $("#hudRace").textContent = `🏁 Ball: you ${rc.us.toFixed(1)} s` + (rc.them ? ` · robot ${rc.them.t.toFixed(1)} s` : "") +
+      (rc.ballSpeed > 100 ? ` · rolling ${cm(rc.ballSpeed)} cm/s` : "");
+  }
+  if (S.released && !R.connected) { $("#hudMsg").hidden = false; $("#hudMsg").textContent = "The panel has let go of the robot, so its own Drive mode works: tap Drive on its screen to use the AIM controller. ▾ → Back to the panel when you're done."; return; }
+  const msg = !R.connected ? (R.problem || "Not connected")
+    : view === "ai" && !S.detections.some((d) => d.source === "onboard") ? "The robot's AI doesn't recognise anything right now" : "";
+  $("#hudMsg").hidden = !msg; $("#hudMsg").textContent = msg;
+}
+
+function renderPosition(R) {
+  if (!R.connected) { $("#pos").textContent = "–"; $("#posNote").textContent = ""; return; }
+  if (FIELDS[S.field.name]) {
+    $("#pos").textContent = `Robot at x ${cm(R.x + S.field.offset[0])}, y ${cm(R.y + S.field.offset[1])} cm on the field`;
+    const by = S.field.located_by;
+    $("#posNote").textContent = !by ? "not placed yet" : by === "placed by hand" ? "placed by hand" : "found from " + by;
+  } else {
+    $("#pos").textContent = `Robot at x ${cm(R.x)}, y ${cm(R.y)} cm from the start`;
+    $("#posNote").textContent = "";
+  }
+}
+
+function renderExplore(R) {
+  const busy = !!S.routine, locked = !R.motion_enabled, field = FIELDS[S.field.name];
+  for (const id of ["#scanHere", "#explore"]) $(id).disabled = busy || locked || !R.connected;
+  $("#explore").disabled ||= !field;
+  const spots = field ? exploreSpotCount(field) : 0;
+  $("#exploreNote").textContent = busy ? `${cap(S.routine.name)}: ${S.routine.text} (${S.routine.seconds} s). STOP ends it.`
+    : !R.connected ? "Not connected."
+    : locked ? "Put the robot on the floor of the arena, then unlock motion (top right)."
+    : !field ? "Choose the arena's field on the map below to explore all of it; Scan here maps what's around the robot."
+    : `Explore visits ${spots} spots across the ${field.name}, scanning a full circle at each (about ${Math.ceil(spots * 0.45)} min).`;
+}
+function exploreSpotCount(f) {  // matches routines.explore_spots
+  let spacing = 600;
+  const n = (half) => { const lo = -half + 300, hi = half - 300; return hi <= lo ? 1 : Math.max(1, Math.ceil((hi - lo) / spacing)) + 1; };
+  while (n(f.w / 2) * n(f.l / 2) > 24) spacing *= 1.25;
+  return n(f.w / 2) * n(f.l / 2);
+}
+
+function renderTeams() {  // which goal is ours, and whether the map has found it yet
+  const G = goals(), R = S.robot;
+  for (const [colour, id] of [["blue", "#goalBlue"], ["orange", "#goalOrange"]]) {
+    const goal = G[colour];
+    $(id).textContent = !goal ? "goal not seen yet" : R.connected
+      ? `goal ~${cm(Math.hypot(goal.mid.x - R.x, goal.mid.y - R.y))} cm away` : "goal on the map";
+  }
+}
+function renderPlayer() { if (document.activeElement !== $("#playerName")) $("#playerName").value = S.player || ""; }
+const teamColour = (t) => (t === "blue" ? "var(--blue)" : t === "orange" ? "var(--orange)" : "#6b7280");
+function renderRoster() {
+  setHtml($("#roster"), (S.players || []).map((p) => `<li class="kv rosterrow ${p.selected ? "sel" : ""}"><span><span class="sw" style="background:${teamColour(p.team)}"></span> ` +
+    `<b>${esc(p.name)}</b> <span class="muted small">${esc(p.host)} · ${p.connected ? (p.battery_percent != null ? `🔋 ${p.battery_percent}%` : "connected") : "not connected"}</span></span>` +
+    (p.selected ? '<span class="muted small">this panel</span>'
+      : `<span><button class="small" data-show="${esc(p.name)}">Show</button><button class="small ghost" data-remove="${esc(p.name)}" title="Take it off the list">×</button></span>`) +
+    "</li>").join("") || '<li class="muted small">No robots yet.</li>');
+}
+function renderLooking() {
+  const names = S.looking_for || [];
+  $("#lookingFor").hidden = !names.length;
+  if (names.length) setHtml($("#lookingFor"), `🔎 Looking for ${names.map(esc).join(", ")} on the network: join the same Wi-Fi on this Mac.`);
+}
+$("#roster").addEventListener("click", async (ev) => {
+  const show = ev.target.closest("button[data-show]"), rm = ev.target.closest("button[data-remove]");
+  if (show) api("player_select", { name: show.dataset.show });
+  if (rm && (await ask(`Take ${rm.dataset.remove} off the team list?`, "Its robot is disconnected from this panel. You can add it again later.", "Remove")))
+    api("player_remove", { name: rm.dataset.remove });
+});
+// Find robots on this network: Blink one to see which it is, Pair it to put it on the team (connected, and labelled on its screen)
+$("#teamFind").onclick = async () => {
+  setHtml($("#pairList"), '<li class="muted small">Looking for AIM robots on this network…</li>');
+  const j = await api("net_find");
+  if (!j.robots) return setHtml($("#pairList"), "");
+  const mine = new Set((S.players || []).map((p) => p.host)), others = j.robots.filter((r) => !mine.has(r.host));
+  const head = `Found ${j.robots.length} robot${j.robots.length === 1 ? "" : "s"}` + (j.robots.length > others.length ? `, ${j.robots.length - others.length} already on the team` : "");
+  setHtml($("#pairList"), `<li class="kv small muted pairhead"><span>${j.robots.length ? head : "No robots found: they need to be awake, and on the same Wi-Fi as this Mac."}</span>` +
+    `<button class="small ghost" id="pairClose" title="Hide">×</button></li>` +
+    others.map((r) => `<li class="kv rosterrow"><span>📡 <b>${esc(r.host)}</b> <span class="muted small">${r.mac ? esc(r.mac) + " · " : ""}firmware ${esc(r.firmware || "?")}</span></span>` +
+      `<span><button class="small ghost" data-blink="${esc(r.host)}" title="Flash its lights and ring, to see which robot this is">Blink</button>` +
+      `<button class="small primary" data-pair="${esc(r.host)}">Pair…</button></span></li>`).join(""));
+};
+$("#pairList").addEventListener("click", async (ev) => {
+  if (ev.target.id === "pairClose") return setHtml($("#pairList"), "");
+  const blink = ev.target.closest("button[data-blink]");
+  if (blink) return api("net_blink", { host: blink.dataset.blink });
+  const b = ev.target.closest("button[data-pair]"); if (!b) return;
+  const names = new Set((S.players || []).map((p) => p.name.toLowerCase()));
+  let n = 2; while (names.has(`aim ${n}`)) n++;
+  const got = await ask(`Pair with the robot at ${b.dataset.pair}?`, "It joins your team list, connects to this panel, and shows its name and team on its screen. " +
+    "Not sure it's yours? Blink it first.", "Pair", [["name", "Player name", `AIM ${n}`, "text"],
+    ["team", "Team", S.team || "", "select", [["blue", "Blue"], ["orange", "Orange"], ["", "No team"]]]]);
+  if (!got) return;
+  b.disabled = true; b.textContent = "Pairing…";
+  const j = await api("player_pair", { host: b.dataset.pair, name: got.name, team: got.team || null });
+  if (j.players) { toast(j.warning || `${j.name} is on the team: look at its screen`, !j.warning); b.closest("li").remove(); }
+  else { b.disabled = false; b.textContent = "Pair…"; }
+});
+$("#addPlayer").onclick = async () => {
+  const j = await api("player_add", { name: $("#addName").value.trim(), host: $("#addHost").value.trim(), team: $("#addTeam").value || null });
+  if (j.players) { $("#addName").value = ""; $("#addHost").value = ""; toast("Added to the team list", true); }
+};
+$("#teamConnect").onclick = async () => {
+  const j = await api("players_connect");
+  const bad = Object.entries(j.results || {}).filter(([, e]) => e);
+  toast(bad.length ? `Couldn't connect: ${bad.map(([n, e]) => `${n} (${e})`).join("; ")}` : "Every robot is connected", !bad.length);
+};
+$("#teamLabel").onclick = () => api("players_label").then((j) => j.results && toast("Each robot shows its player card", true));
+$("#playerSave").onclick = () => api("player", { name: $("#playerName").value }).then((j) => { if (j.player !== undefined) toast(j.player ? `“${j.player}” is on the robot's screen` : "Cleared the player name", true); });
+$("#playerName").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("#playerSave").click(); });
+$("#teamBadge").onclick = () => { setTab("teams"); $("#tabs").scrollIntoView({ block: "start", behavior: "smooth" }); setTimeout(() => $("#playerName").focus(), 400); };
+$("#reacts").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-face]"); if (b) api("react", { expression: b.dataset.face }); });
+
+function renderTags(R) {
+  const on = !!(R.connected && R.apriltags), field = FIELDS[S.field.name], measured = (S.camera_range.AprilTag || {}).k;
+  $("#tags").classList.toggle("active", on); $("#tags").textContent = on ? "On" : "Off";
+  const ids = new Set(Object.keys(S.tags).map(Number));
+  for (const d of S.detections) if (d.kind === "apriltag") ids.add(d.id);
+  for (const o of S.map) if (o.kind === "apriltag") ids.add(o.id);
+  $("#tagHint").textContent = !on && !ids.size ? "Turn on to spot the square AprilTag markers from the kit."
+    : !measured ? "Click a tag and record its distance once: every tag then gets a distance and a place on the map."
+    : !field ? "Choose a field for the map, then pin markers to it: corners make good markers."
+    : "Click a tag to name it and say what it is. A pinned marker tells the robot where it is on the field.";
+  let html = "";
+  for (const id of [...ids].sort((a, b) => a - b)) {
+    const t = S.tags[id] || {}, now = S.detections.find((d) => d.kind === "apriltag" && d.id === id);
+    const status = now ? "seen now" + (now.distance_mm ? ` · ${cm(now.distance_mm)} cm` : "")
+      : t.pin && field ? "pinned to the field" : S.map.some((o) => o.kind === "apriltag" && o.id === id) ? "on the map" : "not seen";
+    html += `<li class="tagrow" data-id="${id}"><span class="tagid">${id}</span><span class="tname">${esc(tagLabel(id) || "AprilTag " + id)}` +
+      `<small>${status}${t.pin && field ? " · 📍" : ""}</small>${t.note ? `<i>“${esc(t.note)}”</i>` : ""}</span>` +
+      (t.role ? `<span class="role ${t.role}">${t.role === "marker" ? "marker" : "obstacle"}</span>` : "") + "</li>";
+  }
+  setHtml($("#tagList"), html);
+}
+$("#tagList").addEventListener("click", (ev) => {
+  const row = ev.target.closest(".tagrow"); if (!row) return;
+  const r = row.getBoundingClientRect(); openTagEditor(Number(row.dataset.id), r.left - 330, r.top);
+});
+$("#tags").onclick = () => api("apriltags", { enabled: !(S.robot.connected && S.robot.apriltags) });
+
+function renderColours() {
+  const ids = Object.keys(S.colours);
+  setHtml($("#colours"), ids.length ? ids.map((id) => { const c = S.colours[id];
+    return `<li class="kv"><span><span class="sw" style="background:rgb(${c.rgb.join(",")})"></span> ${esc(c.label)}` +
+      ` <span class="muted small">slot ${id} · ${c.tolerance}${c.width_mm ? " · " + c.width_mm + " mm wide" : ""}</span></span>` +
+      `<button class="small" data-id="${id}">Forget</button></li>`; }).join("")
+    : '<li class="muted small">None yet. Use “Teach a colour” under the picture.</li>');
+}
+$("#colours").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-id]"); if (b) api("forget_colour", { id: Number(b.dataset.id) }); });
+
+const keyName = (key) => key === "AprilTag" ? "AprilTags" : key.startsWith("colour ") ? ((S.colours[key.split(" ")[1]] || {}).label || key) : key;
+function renderRange() {
+  const R = S.camera_range || {}, keys = Object.keys(R);
+  setHtml($("#range"), keys.length ? keys.map((key) => { const r = R[key];
+    const reach = r.range_mm ? `seen up to ~${cm(r.range_mm)} cm` : r.k ? "not seen yet" : "no distance yet";
+    return `<li class="kv"><span>${esc(keyName(key))}</span><span class="muted small">${reach} · ` +
+      `${r.measured ? r.measured + " measured" : r.k ? "estimated" : "measure it"}` +
+      (r.measured ? ` <button class="small" data-key="${esc(key)}" title="Clear these measurements">×</button>` : "") + "</span></li>"; }).join("")
+    : '<li class="muted small">Nothing measured yet.</li>');
+}
+$("#range").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-key]"); if (b) api("forget_calibration", { key: b.dataset.key }); });
+
+function renderLog() {
+  const ul = $("#log");
+  for (const e of S.events) {
+    const li = document.createElement("li"), t = new Date(e.t * 1000).toLocaleTimeString();
+    li.innerHTML = `<span class="muted">${t}</span> <span class="who ${e.who}">${e.who === "you" ? "You" : e.who === "claude" ? "Claude" : "Robot"}</span> ${esc(e.text)}`;
+    ul.prepend(li);
+  }
+}
+
+// ---------------------------------------------------------------- Auto or Driver, and matches
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+function renderMode(R) {
+  const driver = S.mode === "driver";
+  for (const b of document.querySelectorAll("#modes button[data-mode]")) { b.classList.toggle("active", b.dataset.mode === S.mode); b.disabled = !!S.match; }
+  $("#drivePad").hidden = !driver;
+  $("#hudDriver").hidden = !driver && !S.match;
+  $("#hudDriver").textContent = S.match ? `${S.match.phase === "auto" ? "AUTONOMOUS" : "DRIVER"} · ${clock(S.match.seconds_left)}`
+    : R.motion_enabled ? "DRIVER CONTROL" : "DRIVER CONTROL · unlock motion to drive";
+  const mb = $("#match");
+  mb.className = S.match ? S.match.phase : "";
+  mb.textContent = S.match ? `${S.match.phase === "auto" ? "AUTO" : "DRIVER"} ${clock(S.match.seconds_left)} ■` : "▶ Match";
+  mb.title = S.match ? "Stop the match" : "Start a match: an autonomous period, then driver control";
+  if (!driver) held.clear();
+}
+$("#modes").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-mode]"); if (b && !b.disabled) api("mode", { mode: b.dataset.mode }); });
+$("#match").onclick = () => {
+  if (S.match) return api("match", { action: "stop" });
+  ask("Start a match?", "First the robot plays by itself (autonomous), then you drive. The robot will move: is it on the floor with clear space?",
+    "Start the match", [["auto", "Autonomous, seconds", 15], ["driver", "Driver, seconds", 60]])
+    .then((v) => v && api("match", { action: "start", auto_s: Number(v.auto), driver_s: Number(v.driver) }));
+};
+
+// Driver control: hold buttons or keys; the stick position goes to the panel ten times a second, and
+// the robot stops by itself as soon as it stops arriving.
+const held = new Set();  // "x,y,r" vectors from buttons, and key names
+const KEYS = { w: [0, 1, 0], arrowup: [0, 1, 0], s: [0, -1, 0], arrowdown: [0, -1, 0], a: [-1, 0, 0], arrowleft: [-1, 0, 0],
+  d: [1, 0, 0], arrowright: [1, 0, 0], q: [0, 0, -1], e: [0, 0, 1] };
+let slow = false, lastSent = "0,0,0", pad = null, padKick = false;
+// A game controller on this computer (Bluetooth or USB), read with the browser's Gamepad API: left stick
+// moves, right stick turns, A kicks, holding B (or LB) drives slowly.
+const dz = (v) => (Math.abs(v) < 0.15 ? 0 : v);
+function readPad() {
+  pad = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g && g.connected) || null;
+  if (!pad) return [0, 0, 0];
+  const a = pad.buttons[0] && pad.buttons[0].pressed;
+  if (a && !padKick && S && S.mode === "driver") $("#driveKick").click();
+  padKick = a;
+  return [dz(pad.axes[0] || 0), -dz(pad.axes[1] || 0), dz(pad.axes[2] || 0)];
+}
+function stick() {
+  let [x, y, r] = readPad();
+  const padSlow = pad && ((pad.buttons[1] && pad.buttons[1].pressed) || (pad.buttons[4] && pad.buttons[4].pressed));
+  for (const h of held) { const v = KEYS[h] || h.split(",").map(Number); x += v[0]; y += v[1]; r += v[2]; }
+  const k = Number($("#driveSpeed").value) / 100 * (slow || padSlow ? 0.4 : 1), clamp = (v) => Math.max(-1, Math.min(1, v));
+  const n = Math.hypot(x, y) > 1 ? Math.hypot(x, y) : 1;  // diagonals aren't faster
+  return [clamp(x / n * k), clamp(y / n * k), clamp(r * k * 0.7)];
+}
+setInterval(() => {
+  if (!S || S.mode !== "driver") return;
+  const [x, y, r] = stick(), now = [x, y, r].map((v) => v.toFixed(2)).join(",");
+  for (const b of document.querySelectorAll("#pad button, #turns button")) b.classList.toggle("on", held.has(b.dataset.v));
+  if (now === "0.00,0.00,0.00" && lastSent === now) return;  // idle: the panel already stopped it
+  lastSent = now;
+  api("drive", { x, y, r });
+}, 100);
+for (const el of [$("#pad"), $("#turns")]) {
+  el.addEventListener("pointerdown", (ev) => { const b = ev.target.closest("button[data-v]"); if (b) { held.add(b.dataset.v); b.setPointerCapture(ev.pointerId); } });
+  el.addEventListener("pointerup", (ev) => { const b = ev.target.closest("button[data-v]"); if (b) held.delete(b.dataset.v); });
+  el.addEventListener("pointercancel", () => held.clear());
+}
+const typing = (ev) => ev.target.closest && ev.target.closest("input, textarea, select");
+document.addEventListener("keydown", (ev) => {
+  if (!S || S.mode !== "driver" || typing(ev)) return;
+  const k = ev.key.toLowerCase();
+  slow = ev.shiftKey;
+  if (KEYS[k]) { held.add(k); ev.preventDefault(); }
+  if (k === " " && !ev.repeat) { ev.preventDefault(); $("#driveKick").click(); }
+});
+document.addEventListener("keyup", (ev) => { held.delete(ev.key.toLowerCase()); slow = ev.shiftKey; });
+window.addEventListener("blur", () => held.clear());
+document.addEventListener("visibilitychange", () => held.clear());
+$("#driveSpeed").oninput = () => ($("#driveSpeedText").textContent = $("#driveSpeed").value + "%");
+window.addEventListener("gamepadconnected", (ev) => toast(`Controller connected: ${ev.gamepad.id.split("(")[0].trim()}`, true));
+window.addEventListener("gamepaddisconnected", () => toast("Controller disconnected"));
+function renderControllers() {  // what's plugged in, and a live stick so you can see it working
+  if ($("#ctlPop").hidden) return;
+  const [x, y] = readPad(), c = S.aim_controller || {};
+  const viz = (sx, sy) => `<span class="stickviz"><i style="left:${50 + sx * 40}%;top:${50 - sy * 40}%"></i></span>`;
+  const tip = (text) => `<span class="help" tabindex="0" data-tip="${esc(text)}">?</span>`;
+  setHtml($("#controllers"),
+    `<div class="ctl ${pad ? "on" : ""}">${viz(x, y)}<span><b>🎮 Game controller${tip(pad ? "Left stick moves, right stick turns, A kicks, hold B for slow."
+      : "Xbox, PlayStation or Switch: pair it with this Mac (System Settings → Bluetooth) or plug it in by USB, then press any button on it.")}</b>` +
+      `${pad ? esc(pad.id.split("(")[0].trim()) + " · connected" : "Not connected"}</span></div>` +
+    `<div class="ctl ${c.connected || S.released ? "on" : ""}">${viz((c.x || 0) / 100, (c.y || 0) / 100)}<span><b>🕹 AIM controller${tip("The robot " +
+      "only takes its own controller in its built-in Drive mode, which can't run while the panel is connected. Drive with it… lets go of " +
+      "the robot: tap Drive on its screen. To link a controller: Settings → Link Controller, then double-press the controller's power button.")}</b>` +
+      `${c.connected ? `battery ${c.battery}% · stick ${c.x}, ${c.y}`
+      : S.released ? `<span style="color:var(--yellow)">Let go: tap Drive on the robot.</span> <button class="small primary" id="linkDone">Back to the panel</button>`
+      : `Only in the robot's own Drive mode <button class="small" id="linkStart">Drive with it…</button>`}</span></div>` +
+    `<div class="ctl on"><span class="keycap">⌨️</span><span><b>Keyboard &amp; pad${tip("Hold a button to drive: the robot stops the moment you let go. Keyboard: W A S D or arrows move, Q E turn, Space kicks, hold Shift for slow.")}</b>Always on in Driver mode</span></div>`);
+}
+setInterval(() => { if (S) renderControllers(); }, 150);
+$("#ctlMenu").onclick = (ev) => {
+  ev.stopPropagation();
+  const pop = $("#ctlPop");
+  if (!pop.hidden) { pop.hidden = true; return; }
+  pop.hidden = false;
+  const r = $("#ctlMenu").getBoundingClientRect();  // placed on the page, under the ▾, so it scrolls with it
+  pop.style.left = window.scrollX + Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.right - pop.offsetWidth)) + "px";
+  pop.style.top = window.scrollY + r.bottom + 6 + "px";
+  renderControllers();
+};
+$("#ctlClose").onclick = () => ($("#ctlPop").hidden = true);
+$("#controllers").addEventListener("click", async (ev) => {
+  if (ev.target.id === "linkStart" && (await ask("Drive with the AIM controller?", "The robot only takes its controller in its own Drive " +
+      "mode, which can't run while a program is connected. So the panel lets go of the robot: no camera, map or STOP here until you " +
+      "come back. Then tap Drive on the robot's screen.", "Let go of the robot")))
+    await api("release");
+  if (ev.target.id === "linkDone") {
+    const j = await api("resume");
+    if (j.released === false) toast("The panel has the robot again", true);
+  }
+});
+
+// ---------------------------------------------------------------- Network: remember networks, send robots to one
+let NET = { venues: [], known: [], team: [] };
+async function openNetwork(refresh) {
+  const pop = $("#netPop");
+  if (!refresh) {
+    if (!pop.hidden) { pop.hidden = true; return; }
+    pop.hidden = false;
+    const r = $("#netBtn").getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left)) + "px";
+    pop.style.top = r.bottom + 6 + "px";
+    $("#netRobot").textContent = "Reading the robot's setup page…";
+  }
+  NET = await api("net_info");
+  NET.venues = NET.venues || []; NET.known = NET.known || []; NET.team = NET.team || [];
+  const R = NET.robot;
+  $("#netRobot").innerHTML = R ? `<b>${esc(NET.host)}</b> · ${R.mode === "joins a network" ? `on “${esc(R.network || "?")}”` : "on its own hotspot"} · firmware ${esc(R.firmware || "?")}`
+    + (NET.computer ? ` · this Mac is on “${esc(NET.computer)}”` : "") : `<b>${esc(NET.host || "")}</b> · ${esc(NET.robot_problem || "not reachable")}`;
+  $("#netHotspotNote").hidden = !NET.hotspot;
+  if (NET.hotspot) setHtml($("#netHotspotNote"), `📡 This Mac is on a robot's own hotspot. <button class="small primary" id="netUseHotspot">Use that robot</button>`);
+  $("#netTarget").options[1].textContent = `the whole team (${NET.team.length})`;
+  setHtml($("#netKnown"), NET.known.map((n) => `<option value="${esc(n)}"${n.length > 20 ? ' label="name too long for a robot"' : ""}>`).join(""));
+  renderNets(); noteName(); if (SCAN.length) renderScan();
+}
+function renderNets() {
+  const here = NET.robot && NET.robot.mode === "joins a network" ? NET.robot.network : null, target = $("#netTarget").value;
+  const onHotspot = NET.robot && NET.robot.mode !== "joins a network";
+  const names = [...(here ? [here] : []), ...NET.venues.filter((v) => v !== here)];
+  setHtml($("#netNets"), names.map((n) => {
+    const saved = NET.venues.includes(n), current = n === here;
+    return `<li class="kv rosterrow"><span>${current ? "📶" : "🔑"} <b>${esc(n)}</b> <span class="muted small">${[current && "the robot's network", saved && "remembered"].filter(Boolean).join(" · ")}</span></span><span>` +
+      (!saved ? `<button class="small" data-remember title="Copy its password from the robot into this Mac's keychain (it's never shown)">Remember</button>` : "") +
+      (saved && !(current && target === "this") ? `<button class="small primary" data-send="${esc(n)}">Switch…</button>` : "") +
+      (saved ? `<button class="small ghost" data-forget="${esc(n)}" title="Forget it, and its password">×</button>` : "") + "</span></li>";
+  }).join("") + (target === "this" && NET.robot && !onHotspot ? `<li class="kv rosterrow"><span>📡 <b>Its own hotspot</b> <span class="muted small">no router: this Mac joins the robot</span></span>` +
+      `<span><button class="small" data-hotspot>Switch…</button></span></li>` : "")
+    || '<li class="muted small">No networks yet: add one below.</li>');
+}
+function noteName() {
+  const n = $("#netName").value.trim();
+  $("#netNameNote").textContent = !n ? (NET.known.length ? `Pick from the ${NET.known.length} networks this Mac has joined: the one it's on is usually first.` : "")
+    : n.length > 20 ? "Too long: a robot can only take names of up to 20 characters."
+    : NET.venues.includes(n) ? "Remembered already: leave the password empty to use the saved one."
+    : NET.known.includes(n) ? `✓ This Mac has joined “${n}”.`
+    : SCAN.some((s) => s.ssid === n) ? `✓ “${n}” is nearby.`
+    : `⚠ This Mac hasn't joined “${n}”: check the spelling (capitals count).`;
+  $("#netMacPass").hidden = !(NET.known.includes(n) && !NET.venues.includes(n));
+}
+let SCAN = [];
+const bars = (rssi) => { const n = rssi > -60 ? 3 : rssi > -72 ? 2 : 1;
+  return `<span class="bars" title="signal ${rssi} dBm">${[1, 2, 3].map((i) => `<i class="${i <= n ? "on" : ""}" style="height:${2 + i * 3}px"></i>`).join("")}</span>`; };
+function renderScan() {
+  setHtml($("#netScanList"), SCAN.map((n) => {
+    const why = n.ssid.length > 20 ? "name too long for a robot" : !n.robot_ok ? `${n.bands.join(" + ")} only: robots need 2.4 GHz` : "";
+    const tags = [n.ssid === NET_CURRENT && "this Mac", NET.venues.includes(n.ssid) && "remembered", why].filter(Boolean).join(" · ");
+    return `<li class="kv scanrow ${n.robot_ok ? "" : "no"}" data-ssid="${esc(n.ssid)}"><span>${bars(n.rssi)} <b>${esc(n.ssid)}</b>${n.open ? "" : " 🔒"}</span>` +
+      `<span class="muted small">${esc(tags)}</span></li>`;
+  }).join("") || '<li class="muted small">No networks found.</li>');
+}
+let NET_CURRENT = "";
+$("#netScan").onclick = async () => {
+  const list = $("#netScanList"); list.hidden = false; $("#netScan").disabled = true;
+  setHtml(list, "<li class=\"muted small\">Scanning… The first time, macOS asks you to let “AIM Wi-Fi Scan” use Location Services: allow it.</li>");
+  const j = await api("net_scan"); $("#netScan").disabled = false;
+  if (j.permission === "denied") return setHtml(list, '<li class="small">Location Services is off for “AIM Wi-Fi Scan”: turn it on in System Settings → ' +
+    "Privacy & Security → Location Services, then scan again.</li>");
+  if (j.permission === "no answer") return setHtml(list, '<li class="small muted">No answer from macOS yet: allow “AIM Wi-Fi Scan” to use Location Services, then scan again.</li>');
+  if (j.error || !j.networks) return setHtml(list, `<li class="small">${esc(j.error || "The scan didn't work.")}</li>`);
+  SCAN = j.networks; NET_CURRENT = j.current || ""; renderScan(); noteName();
+};
+$("#netScanList").addEventListener("click", (ev) => {
+  const row = ev.target.closest("li[data-ssid]");
+  if (!row || row.classList.contains("no")) return;
+  $("#netName").value = row.dataset.ssid; noteName();
+  (NET.venues.includes(row.dataset.ssid) ? $("#netMove") : $("#netMacPass").hidden ? $("#netPass") : $("#netMacPass")).focus();
+});
+$("#netMacPass").onclick = async () => {
+  const name = $("#netName").value.trim();
+  toast(`macOS will ask for your Mac's password before handing over the one saved for “${name}”`, true);
+  const j = await api("net_remember", { network: name, from_mac: true });
+  if (j.network) { $("#netName").value = ""; $("#netPass").value = ""; toast(`Remembered “${j.network}”, with this Mac's saved password`, true); openNetwork(true); }
+};
+$("#netName").addEventListener("input", noteName);
+$("#netTarget").onchange = renderNets;
+$("#netShow").onclick = () => { const i = $("#netPass"); i.type = i.type === "password" ? "text" : "password"; };
+$("#netBtn").onclick = (ev) => { ev.stopPropagation(); openNetwork(); };
+$("#netClose").onclick = () => ($("#netPop").hidden = true);
+document.addEventListener("pointerdown", (ev) => {
+  if (!$("#netPop").hidden && !$("#netPop").contains(ev.target) && !$("#netBtn").contains(ev.target) && !ev.target.closest(".dialog-back")) $("#netPop").hidden = true;
+});
+$("#netNets").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.dataset.forget !== undefined && (await ask(`Forget “${b.dataset.forget}”?`, "Its password is taken out of this Mac's keychain too.", "Forget"))) {
+    await api("net_forget", { network: b.dataset.forget }); openNetwork(true);
+  }
+  if (b.dataset.remember !== undefined) {
+    const j = await api("net_remember");
+    if (j.network) { toast(`Remembered “${j.network}”: its password is in this Mac's keychain`, true); openNetwork(true); }
+  }
+  if (b.dataset.send) sendTo(b.dataset.send, "");
+  if (b.dataset.hotspot !== undefined) toHotspot();
+});
+$("#netHotspotNote").addEventListener("click", async (ev) => {
+  if (ev.target.id !== "netUseHotspot") return;
+  const j = await api("net_use", { host: NET.hotspot.host });
+  if (j.host) { toast("The panel is using the robot on this hotspot: now switch it to a network", true); openNetwork(true); }
+});
+async function toHotspot() {
+  const here = NET.robot && NET.robot.network;
+  const ok = await ask("Switch this robot to its own hotspot?", "It leaves this network and starts its own Wi-Fi, called AIM-…: the password is on " +
+    "the robot's screen. Join it on this Mac and the panel reconnects by itself. On the robot's hotspot this Mac has no internet, so Claude " +
+    `can't reply until it's back on a network, but this panel keeps working.${here ? ` “${here}” is remembered first, so you can switch back.` : ""}`, "Switch");
+  if (!ok) return;
+  const j = await api("net_hotspot");
+  if (j.ok) { toast("The robot is starting its hotspot: join its AIM-… Wi-Fi on this Mac", true); openNetwork(true); }
+}
+$("#netSave").onclick = async () => {
+  const name = $("#netName").value.trim();
+  if (!name) return toast("Pick or type the network's name first.");
+  const j = await api("net_remember", { network: name, password: $("#netPass").value });
+  if (j.network) { $("#netName").value = ""; $("#netPass").value = ""; toast(`Remembered “${j.network}”`, true); openNetwork(true); }
+};
+$("#netMove").onclick = () => {
+  const name = $("#netName").value.trim();
+  if (!name) return toast("Pick or type the network's name first.");
+  sendTo(name, $("#netPass").value);
+};
+async function sendTo(name, password) {
+  const target = $("#netTarget").value;
+  const who = target === "team" ? `all ${NET.team.length} robots on the team (${NET.team.join(", ")})` : "this robot";
+  const open = !password && !NET.venues.includes(name) ? " No password: that only works for an open network." : "";
+  const ok = await ask(`Switch ${who} to “${name}”?`, `${target === "team" ? "They leave" : "It leaves"} this network straight away. Join “${name}” on this ` +
+    "Mac too: the panel then finds the robots again by itself. If the password is wrong a robot can't connect anywhere: put it on its own " +
+    `hotspot from its screen (Settings → Radio → Access Point) and switch it again.${open}`, "Switch");
+  if (!ok) return;
+  const j = await api("net_move", { network: name, password, remember: true, target });
+  if (!j.network) return;
+  const bad = Object.entries(j.results || {}).filter(([, e]) => e);
+  toast(bad.length ? `${j.text} Couldn't reach ${bad.map(([h, e]) => `${h} (${e})`).join("; ")}.` : `${j.text} Now join “${name}” on this Mac too.`, !bad.length);
+  $("#netName").value = ""; $("#netPass").value = ""; openNetwork(true);
+}
+document.addEventListener("pointerdown", (ev) => {  // a click elsewhere closes it, but not one in a dialog it opened
+  if (!$("#ctlPop").hidden && !$("#ctlPop").contains(ev.target) && ev.target !== $("#ctlMenu") && !ev.target.closest(".dialog-back")) $("#ctlPop").hidden = true;
+});
+$("#driveKick").onclick = () => api("driver_kick", { strength: $("#kickPower").value });
+
+// ---------------------------------------------------------------- the side tabs: explore, teams, strategy
+let tab = "explore";
+try { tab = ["explore", "teams", "strategy"].includes(localStorage.getItem("aimTab")) ? localStorage.getItem("aimTab") : "explore"; } catch (e) {}
+function setTab(t) {
+  tab = t; try { localStorage.setItem("aimTab", t); } catch (e) {}
+  for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("active", b.dataset.tab === t);
+  for (const el of document.querySelectorAll(".tab")) el.hidden = el.dataset.tab !== t;
+  if (S) render(true);
+}
+$("#tabs").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
+
+// ---------------------------------------------------------------- predictions: how long to get there, and races
+function mySpeeds() {  // our driving speed (mm/s) and turning rate (°/s): measured if it's been tested, else the speed cap
+  const D = Object.values(S.abilities.drive || {}), best = D.length ? D.reduce((a, b) => (b.top_mm_s > a.top_mm_s ? b : a)) : null;
+  return { drive: best ? best.top_mm_s : S.max_speed * 2, accel: best && best.accel_s != null ? best.accel_s : 0.3, turn: S.max_speed * 1.8 };
+}
+function etaTo(dist, bearing) {  // seconds for us to turn to something and drive up until it's at the kicker
+  const m = mySpeeds();
+  return Math.abs(bearing) / m.turn + m.accel / 2 + Math.max(0, dist - 60) / m.drive;
+}
+function floorSlowing() {  // how hard the floor slows a rolling ball (mm/s²), from kick tests; a guess until then
+  const v = [...(S.abilities.slowing || [])].sort((a, b) => a - b);
+  return v.length ? v[v.length >> 1] : 450;
+}
+function race() {  // who gets to the ball first: us, or another robot the map has seen. Other AIM robots drive as fast as us.
+  const R = S.robot, ball = S.map.find((o) => o.name === "SportsBall");
+  if (!R.connected || !ball) return null;
+  const toBall = Math.hypot(ball.x - R.x, ball.y - R.y);
+  const bearing = ((Math.atan2(ball.x - R.x, ball.y - R.y) * 180 / Math.PI - R.heading + 540) % 360) - 180;
+  const m = mySpeeds(), us = etaTo(toBall, bearing);
+  const them = S.map.filter((o) => o.name === "Robot").map((o) => ({ o, t: m.accel / 2 + Math.max(0, Math.hypot(ball.x - o.x, ball.y - o.y) - 130) / m.drive }))
+    .sort((a, b) => a.t - b.t)[0] || null;
+  return { ball, us, them, toBall, ballSpeed: Math.hypot(ball.vx || 0, ball.vy || 0) };
+}
+
+// ---------------------------------------------------------------- strategy: what the robot can do, measured
+function ballTime(s, x) {  // seconds for a kick of strength s to roll x mm, slowing evenly to a stop at its reach
+  const r = (S.kick_reach || {})[s];
+  if (!r || !r.launch_mm_s || x > r.mm) return null;
+  const v = r.launch_mm_s, a = v * v / (2 * r.mm);
+  return (v - Math.sqrt(Math.max(0, v * v - 2 * a * x))) / a;
+}
+function driveTime(x) {  // seconds to drive x mm at the fastest tested speed setting
+  const D = Object.values(S.abilities.drive || {});
+  if (!D.length) return null;
+  const d = D.reduce((a, b) => (b.top_mm_s > a.top_mm_s ? b : a));
+  return (d.accel_s || 0) / 2 + x / d.top_mm_s;
+}
+let askKick = null, dismissedKick = null;
+function renderStrategy() {
+  const K = S.kick_reach || {}, maxMm = Math.max(500, ...Object.values(K).map((r) => r.max_mm));
+  const locked = !S.robot.motion_enabled || !!S.routine;
+  setHtml($("#kicks"), STRENGTHS.map((s) => { const r = K[s];
+    return `<div class="abil"><b>${cap(s)}</b><span class="bar">` +
+      (r ? `<i class="spread" style="left:${100 * r.min_mm / maxMm}%;width:${Math.max(1.5, 100 * (r.max_mm - r.min_mm) / maxMm)}%"></i>` +
+        `<i style="width:${100 * r.mm / maxMm}%"></i>` : "") + "</span>" +
+      `<span class="val">${r ? `${cm(r.mm)} cm<small>${r.tests} test${r.tests > 1 ? "s" : ""}</small>` : '<small>not tested</small>'}</span>` +
+      `<button class="small" data-kick="${s}" ${locked ? "disabled" : ""}>Test</button>` +
+      `<button class="small ghost" data-enter="${s}" title="Enter a distance you measured">+ cm</button></div>`; }).join(""));
+  const lk = S.last_kick, waiting = lk && !lk.stopped_mm && lk.time !== dismissedKick && Date.now() / 1000 - lk.time < 600;
+  const s = askKick || (waiting ? lk.strength : null), ask = $("#kickAsk");
+  ask.hidden = !s;
+  if (s) setHtml(ask, `<span class="small">${!askKick && waiting ? (lk.seen ? `The ball rolled out of the camera's view at about ${cm(lk.last_seen_mm)} cm. `
+      : "The camera didn't see the ball after the kick. ") : ""}How far from the kicker did the <b>${s}</b> kick stop?</span>` +
+    `<span class="line"><input id="kickCm" type="number" min="2" placeholder="cm" style="width:90px"><button id="kickSave" class="primary small" data-s="${s}">Save</button>` +
+    `<button id="kickSkip" class="ghost small">Skip</button></span>`);
+  const D = S.abilities.drive || {}, keys = Object.keys(D).sort((a, b) => a - b), topMax = Math.max(100, ...keys.map((k) => D[k].top_mm_s));
+  setHtml($("#drives"), keys.length ? keys.map((k) => { const d = D[k];
+    return `<div class="abil"><b>${k}%</b><span class="bar"><i style="width:${100 * d.top_mm_s / topMax}%"></i></span>` +
+      `<span class="val">${(d.top_mm_s / 10).toFixed(1)} cm/s<small>${d.accel_s != null ? "up to speed in " + d.accel_s + " s" : ""}</small></span>` +
+      `<span></span><button class="small ghost" data-forget="${k}" title="Clear this result">×</button></div>`; }).join("")
+    : '<div class="muted small">Not tested yet.</div>');
+  const sp = $("#speedPct");
+  if (!sp.options.length) for (let p = 10; p <= S.max_speed; p += 10) sp.add(new Option(p + "%", p, false, p === 30));
+  $("#speedTest").disabled = locked;
+  renderDecide();
+}
+const ADVICE_PLAY = { fetch: "fetch", shoot: "score", dribble: "score", pass: "pass_to" };
+function renderPlays() {
+  const R = S.robot, why = !R.connected ? "Not connected." : S.mode === "driver" ? "You're driving: switch to Auto to run a play."
+    : !R.motion_enabled ? "Unlock motion (top right) once the robot is on the floor." : S.routine ? `Busy: ${S.routine.name}. STOP ends it.` : "";
+  for (const b of document.querySelectorAll("#plays button")) b.disabled = !!why;
+  $("#playsNote").textContent = why || "The robot does these by itself, using the map and the measured kicks. STOP ends them.";
+}
+function renderDecide() {
+  const out = [], a = S.advice;
+  if (a) {  // the same advice Claude's advise tool gives
+    const play = ADVICE_PLAY[a.action], can = play && S.robot.motion_enabled && S.mode !== "driver" && !S.routine;
+    out.push(`<div class="verdict ${a.action === "shoot" ? "ok" : "no"} advice"><span><b>${cap(a.action)}${a.strength ? " · " + a.strength : ""}</b>: ${esc(a.why)}</span>` +
+      (play ? `<button class="small" id="doAdvice" ${can ? "" : "disabled"}>Do it</button>` : "") + "</div>");
+  }
+  const row = (x) => {
+    const kicks = STRENGTHS.map((k) => [k, ballTime(k, x)]).filter(([, t]) => t), best = kicks.sort((a, b) => a[1] - b[1])[0], drive = driveTime(x);
+    return `<tr><td>${x >= 1000 ? x / 1000 + " m" : cm(x) + " cm"}</td><td>${best ? `${best[1].toFixed(1)} s <span class="muted small">${best[0]}</span>` : "—"}</td>` +
+      `<td>${drive ? drive.toFixed(1) + " s" : "—"}</td></tr>`;
+  };
+  out.push(`<table class="race"><tr><th>To cover</th><th>Kicked ball</th><th>Robot driving</th></tr>${[500, 1000, 2000].map(row).join("")}</table>`);
+  out.push('<div class="muted small">“—” means not tested, or out of reach. A kick is usually far faster than driving: pass or shoot when the target is within reach and the path is clear; dribble when it isn\'t. Other AIM robots drive at the same speeds.</div>');
+  setHtml($("#decide"), out.join(""));
+}
+$("#kicks").addEventListener("click", (ev) => {
+  const t = ev.target.closest("button[data-kick]"), e = ev.target.closest("button[data-enter]");
+  if (t) ask(`Test a ${t.dataset.kick} kick?`, "Is the ball in the kicker, with open floor ahead of the robot, and is everyone clear?", "Kick")
+    .then((ok) => ok && api("kick_test", { strength: t.dataset.kick, ball_confirmed: true }));
+  if (e) { askKick = e.dataset.enter; renderStrategy(); $("#kickCm").focus(); }
+});
+$("#kickAsk").addEventListener("click", async (ev) => {
+  if (ev.target.id === "kickSave") {
+    const j = await api("kick_record", { strength: ev.target.dataset.s, distance_cm: Number($("#kickCm").value) });
+    if (j.kick_reach) { askKick = null; dismissedKick = S.last_kick && S.last_kick.time; toast("Saved", true); }
+  }
+  if (ev.target.id === "kickSkip") { askKick = null; dismissedKick = S.last_kick && S.last_kick.time; renderStrategy(); }
+});
+$("#drives").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-forget]"); if (b) api("forget_ability", { kind: "drive", key: b.dataset.forget }); });
+$("#speedTest").onclick = () => {
+  const pct = Number($("#speedPct").value), dist = Number($("#speedDist").value);
+  ask("Test the driving speed?", `The robot drives ${dist} cm straight ahead at ${pct}% and back. Is that much floor clear?`, "Drive")
+    .then((ok) => ok && api("speed_test", { speed_percent: pct, distance_cm: dist }));
+};
+$("#plays").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button[data-play]"); if (!b) return;
+  const play = b.dataset.play;
+  if (play === "go_to" || play === "pass_to") { placing = { play }; $("#map").scrollIntoView({ block: "center", behavior: "smooth" }); drawMap(); return; }
+  const what = { fetch: "fetch the ball", score: "fetch the ball and shoot at our goal", guard: "play goalkeeper" }[play];
+  if (await ask(`Run the play: ${what}?`, "The robot moves by itself. Is the pitch clear, and is everyone out of the way of the ball?", "Go"))
+    api("play", { play, seconds: Number($("#guardSecs").value) || 30 });
+});
+$("#decide").addEventListener("click", async (ev) => {
+  if (ev.target.id !== "doAdvice" || !S.advice) return;
+  const a = S.advice, play = ADVICE_PLAY[a.action];
+  if (!(await ask(`${cap(a.action)}?`, `${a.why} The robot moves by itself: is the pitch clear?`, "Go"))) return;
+  if (play === "pass_to" && a.target_mm) api("play", { play, x: a.target_mm[0], y: a.target_mm[1] }); else api("play", { play });
+});
+$("#scanHere").onclick = () => api("scan");
+$("#explore").onclick = () => {
+  ask("Explore the field?", `The robot drives around the ${FIELDS[S.field.name].name} on its own for a few minutes. Is the arena clear, and are you watching?`,
+    "Explore").then((ok) => ok && api("explore"));
+};
+
+// ---------------------------------------------------------------- the picture: Camera, Camera + AI, AI only
+let view = "both";
+try { view = ["camera", "both", "ai"].includes(localStorage.getItem("aimView")) ? localStorage.getItem("aimView") : "both"; } catch (e) {}
+function setView(v) {
+  view = v; try { localStorage.setItem("aimView", v); } catch (e) {}
+  $(".stage").classList.toggle("nofeed", v === "ai");
+  for (const b of document.querySelectorAll("#views button")) b.classList.toggle("active", b.dataset.view === v);
+  const img = $("#video");  // the AI-only view closes the video, and the robot stops streaming a few seconds later
+  if (v === "ai") img.removeAttribute("src"); else if (!img.getAttribute("src")) img.src = "/stream.mjpg?" + Date.now();
+  stalled = 0;
+  if (S) { renderHud(S.robot); drawLayer(); drawOverlay(); }
+}
+$("#views").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-view]"); if (b) setView(b.dataset.view); });
+
+function drawLayer() {  // the AI's view: drawn over the video, or on its own
+  const c = $("#layer"), g = c.getContext("2d"), k = fit(c), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  if (view === "camera") return;
+  const solo = view === "ai", sx = W / FRAME_W, sy = H / FRAME_H;
+  if (solo) { g.fillStyle = "#0e1013"; g.fillRect(0, 0, W, H); }
+  else { const band = g.createLinearGradient(0, 0, 0, 34 * k); band.addColorStop(0, "rgba(0,0,0,.6)"); band.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = band; g.fillRect(0, 0, W, 34 * k); }
+  setFont(g, k, 12); g.textAlign = "center"; g.lineWidth = k;
+  for (const [b, x] of RULER) {  // bearings along the top, with faint guide lines in the AI-only view
+    g.strokeStyle = solo ? (b === 0 ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.07)") : "rgba(255,255,255,.7)";
+    g.beginPath(); g.moveTo(x * sx, 20 * k); g.lineTo(x * sx, solo ? H : 27 * k); g.stroke();
+    g.fillStyle = "#e6e8ea"; g.fillText(fmtB(b), x * sx, 15 * k);
+  }
+  if (!S || !S.robot.connected) return;
+  const placed = [];
+  for (const d of S.detections) drawShape(g, k, sx, sy, d, solo, placed);
+}
+function drawShape(g, k, sx, sy, d, solo, placed) {
+  const x0 = d.box[0] * sx, y0 = d.box[1] * sy, w = (d.box[2] - d.box[0]) * sx, h = (d.box[3] - d.box[1]) * sy;
+  const col = swatch(d), tag = d.kind === "apriltag";
+  g.save(); g.beginPath();
+  if (d.name === "SportsBall") g.ellipse(x0 + w / 2, y0 + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI);
+  else if (g.roundRect) g.roundRect(x0, y0, w, h, Math.min(w, h) * (tag ? 0.06 : 0.15)); else g.rect(x0, y0, w, h);
+  if (d.held) { g.shadowColor = col; g.shadowBlur = 16 * k; }
+  if (d.source === "yolo") { g.setLineDash([6 * k, 4 * k]); g.strokeStyle = col; g.lineWidth = 2 * k; g.stroke(); }
+  else if (solo) { g.globalAlpha = 0.9; g.fillStyle = col; g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 1.5 * k; g.stroke(); }
+  else { g.globalAlpha = 0.22; g.fillStyle = col; g.fill(); g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = 2 * k; g.stroke(); }
+  g.restore();
+  if (tag && solo) {
+    setFont(g, k, Math.max(11, h / k * 0.45), 700); g.fillStyle = "#111"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(String(d.id), x0 + w / 2, y0 + h / 2); g.textBaseline = "alphabetic";
+  }
+  const role = tag && S.tags[d.id] ? S.tags[d.id].role : null;
+  const name = tag ? d.label || "tag " + d.id : d.source === "yolo" ? `YOLO: ${d.display}${d.score ? " " + d.score + "%" : ""}` : shortName(d.display);
+  const eta = d.distance_mm && !d.held && !tag && d.source === "onboard" ? `⏱ ${etaTo(d.distance_mm, d.bearing).toFixed(1)} s` : null;
+  const text = [name, fmtB(d.bearing), d.distance_mm ? cm(d.distance_mm) + " cm" : null, eta,
+    d.held ? "in the kicker" : null, role].filter(Boolean).join(" · ");
+  pill(g, k, text, x0, y0 - 22 * k, col, placed, y0 + h + 4 * k);
+}
+
+// the click layer: the selected object, and the box being dragged to teach a colour
+const ov = $("#overlay");
+function toFrame(ev) { const r = ov.getBoundingClientRect(); return [(ev.clientX - r.left) / r.width * FRAME_W, (ev.clientY - r.top) / r.height * FRAME_H]; }
+const sameThing = (a, b) => a.source === b.source && a.name === b.name &&
+  (a.kind === "apriltag" ? a.id === b.id : Math.abs(((a.heading - b.heading + 540) % 360) - 180) < 8);
+function drawOverlay() {
+  const g = ov.getContext("2d"), k = fit(ov), sx = ov.width / FRAME_W, sy = ov.height / FRAME_H;
+  g.clearRect(0, 0, ov.width, ov.height);
+  const d = sel && S && S.detections.find((x) => sameThing(x, sel));
+  if (d) { g.strokeStyle = "#fff"; g.lineWidth = 2 * k; g.setLineDash([6 * k, 4 * k]);
+    g.strokeRect(d.box[0] * sx - 4 * k, d.box[1] * sy - 4 * k, (d.box[2] - d.box[0]) * sx + 8 * k, (d.box[3] - d.box[1]) * sy + 8 * k); g.setLineDash([]); }
+  if (drag) { const [x0, y0, x1, y1] = drag; g.strokeStyle = "#fff"; g.lineWidth = 2 * k; g.fillStyle = "rgba(255,255,255,.15)";
+    g.fillRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy); g.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy); }
+}
+ov.addEventListener("pointerdown", (ev) => {
+  const [x, y] = toFrame(ev);
+  if (mode === "colour") { drag = [x, y, x, y]; ov.setPointerCapture(ev.pointerId); return; }
+  if (!S) return;
+  const hits = S.detections.filter((d) => x >= d.box[0] && x <= d.box[2] && y >= d.box[1] && y <= d.box[3])
+    .sort((a, b) => (a.box[2] - a.box[0]) * (a.box[3] - a.box[1]) - (b.box[2] - b.box[0]) * (b.box[3] - b.box[1]));
+  if (!hits.length) return closeInspector();
+  if (hits[0].kind === "apriltag") { closeInspector(); sel = hits[0]; drawOverlay(); openTagEditor(hits[0].id, ev.clientX + 12, ev.clientY + 12); }
+  else inspect(hits[0]);
+});
+ov.addEventListener("pointermove", (ev) => { if (drag) { const [x, y] = toFrame(ev); drag[2] = x; drag[3] = y; drawOverlay(); } });
+ov.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const box = [Math.min(drag[0], drag[2]), Math.min(drag[1], drag[3]), Math.max(drag[0], drag[2]), Math.max(drag[1], drag[3])];
+  if (box[2] - box[0] < 6 || box[3] - box[1] < 6) { drag = null; drawOverlay(); return; }
+  drag = box; colourForm(box);
+});
+
+function inspect(d) {
+  sel = d; const box = $("#inspector"); box.hidden = false;
+  const where = `${fmtB(d.bearing)} from straight ahead${d.distance_mm ? `, about ${cm(d.distance_mm)} cm away` : ""}`;
+  const onboard = d.source === "onboard";
+  box.innerHTML = `<div><b>${esc(d.display)}</b> <span class="muted">· ${where}${d.held ? " · in the kicker" : ""}</span></div>` +
+    (onboard ? `<div class="line"><input id="labelIn" placeholder="Label, e.g. left post" value="${esc(d.label || "")}"><button id="saveLabel">Save label</button>` +
+      `<input id="distIn" type="number" min="2" placeholder="Real distance, cm" style="width:150px"><button id="recordDist">Record distance</button></div>` : "") +
+    `<div class="line"><input id="noteIn" placeholder="Note for Claude (optional)"><button id="pointOut">Point out to Claude</button><button id="closeI">Close</button></div>`;
+  if (onboard) {
+    $("#saveLabel").onclick = () => api("label", { object: d, label: $("#labelIn").value });
+    $("#recordDist").onclick = async () => {
+      const j = await api("calibrate", { object: d, distance_cm: Number($("#distIn").value) });
+      if (j.k) toast(`Recorded (${j.samples} so far): distance constant ${Math.round(j.k)}`, true);
+    };
+  }
+  $("#pointOut").onclick = () => api("select", { object: d, note: $("#noteIn").value || null });
+  $("#closeI").onclick = closeInspector;
+  drawOverlay();
+}
+function colourForm(box) {
+  const el = $("#inspector"); el.hidden = false; sel = null;
+  el.innerHTML = `<div><b>Teach the robot this colour</b> <span class="muted">· its onboard AI will then find it on its own</span></div>` +
+    `<div class="line"><input id="colourName" placeholder="Name, e.g. red cup"><select id="tol"><option>tight</option><option selected>normal</option><option>loose</option></select>` +
+    `<input id="colourWidth" type="number" min="1" placeholder="Real width, mm (optional, for the map)" style="width:250px">` +
+    `<button id="teach">Teach</button><button id="cancelC">Cancel</button></div>`;
+  $("#colourName").focus();
+  $("#teach").onclick = async () => {
+    const j = await api("colour", { box, label: $("#colourName").value, tolerance: $("#tol").value, width_mm: Number($("#colourWidth").value) || null });
+    if (j.id) { toast(`Learned “${j.label}”`, true); closeInspector(); }
+  };
+  $("#cancelC").onclick = closeInspector;
+}
+function closeInspector() { sel = null; drag = null; $("#inspector").hidden = true; drawOverlay(); }
+function setMode(m) {
+  if (m === "colour" && view === "ai") { setView("both"); toast("Switched to the camera picture, to teach a colour", true); }
+  mode = m; closeInspector();
+  $("#modeSelect").classList.toggle("active", m === "select"); $("#modeColour").classList.toggle("active", m === "colour");
+  $("#modeHint").textContent = m === "select" ? "Click an object to label it or point it out to Claude." : "Drag a box over an object to teach its colour.";
+}
+$("#modeSelect").onclick = () => setMode("select");
+$("#modeColour").onclick = () => setMode("colour");
+$("#teamBlue").onclick = () => api("team", { colour: "blue" });
+$("#teamOrange").onclick = () => api("team", { colour: "orange" });
+$("#teamNone").onclick = () => api("team", { colour: null });
+$("#stop").onclick = () => api("stop");
+$("#clearMap").onclick = () => api("clear_map");
+$("#yolo").onclick = () => {
+  const on = !S.yolo.enabled;
+  if (on && view !== "both") setView("both");  // YOLO looks at the video, and its boxes show over it
+  api("yolo", { enabled: on });
+};
+$("#motion").onclick = () => {
+  if (S.robot.motion_enabled) return api("motion", { enabled: false });
+  ask("Unlock motion?", "Only when the robot is on the floor, with clear space around it, and you're watching it. STOP (top right) stops it at any time.",
+    "Unlock").then((ok) => ok && api("motion", { enabled: true }));
+};
+
+// ---------------------------------------------------------------- defining an AprilTag: name, what it is, what it means
+let popId = null;
+function openTagEditor(id, x, y) {
+  popId = id;
+  const pop = $("#tagPop"), t = S.tags[id] || {}, field = FIELDS[S.field.name];
+  const now = S.detections.find((d) => d.kind === "apriltag" && d.id === id);
+  const roles = [["marker", "Marker"], ["obstacle", "Obstacle"], ["", "Neither"]];
+  pop.innerHTML = `<div class="pophead"><span class="tagid">${id}</span><b>AprilTag ${id}</b>` +
+    `<span class="muted small">${now ? `seen now, ${fmtB(now.bearing)}${now.distance_mm ? `, ${cm(now.distance_mm)} cm` : ""}` : "not in view"}</span>` +
+    `<button class="ghost small" id="popClose" title="Close">✕</button></div>` +
+    `<label>Name<input id="popName" value="${esc(tagLabel(id) || "")}" placeholder="e.g. top-left corner"></label>` +
+    `<label>It's a<span class="seg">${roles.map(([r, n]) => `<button data-role="${r}" class="small ${(t.role || "") === r ? "active " + r : ""}">${n}</button>`).join("")}</span></label>` +
+    `<label>What it means<textarea id="popNote" rows="2" placeholder="For Claude, e.g. “corner: turn back to the middle” or “our home base”">${esc(t.note || "")}</textarea></label>` +
+    (now && !now.distance_mm ? `<label>Distance<span class="line" style="flex-wrap:nowrap"><input id="popDist" type="number" min="2" placeholder="cm" style="width:80px">` +
+      `<button id="popRecord" class="small">Record</button><span class="muted small">from the camera</span></span></label>` : "") +
+    `<label>On the field${field ? `<span><button id="popPin" class="small">${t.pin ? "Unpin" : "Pin on the map"}</button></span>`
+      : '<span class="muted small">choose a field for the map to pin it</span>'}</label>` +
+    `<div class="line" style="justify-content:flex-end">${now ? '<button id="popPoint" class="small ghost">Point out to Claude</button>' : ""}` +
+    `<button id="popSave" class="small primary">Save</button></div>`;
+  pop.hidden = false;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, x)) + "px";
+  pop.style.top = Math.max(8, Math.min(window.innerHeight - pop.offsetHeight - 8, y)) + "px";
+  for (const b of pop.querySelectorAll("button[data-role]")) b.onclick = () => {
+    for (const o of pop.querySelectorAll("button[data-role]")) o.className = "small" + (o === b && b.dataset.role ? " active " + b.dataset.role : o === b ? " active" : "");
+    api("tag", { id, role: b.dataset.role || null });
+  };
+  $("#popClose").onclick = closeTagEditor;
+  $("#popSave").onclick = async () => { await api("tag", { id, label: $("#popName").value, note: $("#popNote").value }); closeTagEditor(); };
+  if ($("#popRecord")) $("#popRecord").onclick = async () => {
+    const j = await api("calibrate", { object: now, distance_cm: Number($("#popDist").value) });
+    if (j.k) { toast("Recorded: every tag now has a distance", true); openTagEditor(id, x, y); }
+  };
+  if ($("#popPin")) $("#popPin").onclick = () => { closeTagEditor(); if (t.pin) api("tag", { id, pin: null }); else startPin(id); };
+  if ($("#popPoint")) $("#popPoint").onclick = () => api("select", { object: now, note: $("#popNote").value || null });
+  $("#popName").focus();
+}
+function closeTagEditor() { $("#tagPop").hidden = true; popId = null; if (sel && sel.kind === "apriltag") { sel = null; drawOverlay(); } }
+document.addEventListener("pointerdown", (ev) => {
+  if (popId !== null && !$("#tagPop").contains(ev.target) && !ev.target.closest(".tagrow") && ev.target !== $("#map") && ev.target !== ov) closeTagEditor();
+});
+
+// ---------------------------------------------------------------- the top-down map
+// Positions arrive in the robot's odometry frame (mm from where it connected). On a field they're
+// shifted by the field offset, which "Place robot" or a pinned marker in view sets.
+function obstacleSpots(off) {  // obstacle tags, in odometry coordinates: from their pin, or where the map has them
+  const out = [];
+  for (const [id, t] of Object.entries(S.tags)) {
+    if (t.role !== "obstacle") continue;
+    const m = S.map.find((o) => o.kind === "apriltag" && o.id === +id);
+    if (t.pin && off) out.push({ x: t.pin[0] - off.x, y: t.pin[1] - off.y }); else if (m) out.push(m);
+  }
+  return out;
+}
+function niceStep(mm) { return [100, 200, 250, 500, 1000, 2000].find((s) => s >= mm) || 5000; }
+function drawMap() {
+  const c = $("#map"), g = c.getContext("2d"), k = fit(c), W = c.width, H = c.height, R = S.robot;
+  const line = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+  g.clearRect(0, 0, W, H); mapHits = [];
+  if (!R.connected) { setFont(g, k, 12); g.fillStyle = "#9aa1a9"; g.textAlign = "center"; g.fillText("Not connected", W / 2, H / 2); return; }
+  const field = FIELDS[S.field.name], off = field ? { x: S.field.offset[0], y: S.field.offset[1] } : null;
+  const fov = (S.fov_deg || 34) * Math.PI / 180, h = R.heading * Math.PI / 180;
+  const pins = field ? Object.entries(S.tags).filter(([, t]) => t.pin).map(([id, t]) => ({ id: +id, role: t.role, x: t.pin[0] - off.x, y: t.pin[1] - off.y })) : [];
+  const pinned = new Set(pins.map((p) => p.id));
+  const remembered = S.map.filter((o) => !(o.kind === "apriltag" && pinned.has(o.id)));
+  const trail = S.trail.map(([x, y]) => ({ x, y })), current = [];
+  for (const d of S.detections) if (d.distance_mm && !d.held) {
+    const a = d.heading * Math.PI / 180;
+    current.push({ d, x: R.x + d.distance_mm * Math.sin(a), y: R.y + d.distance_mm * Math.cos(a) });
+  }
+  let X, Y, sc, half;
+  const pad = 12 * k;
+  if (field) {  // the whole field at a fixed scale, with its real tiles
+    sc = Math.min((W - 2 * pad) / field.w, (H - 2 * pad) / field.l); half = Math.max(field.w, field.l) / 2;
+    X = (x) => W / 2 + (x + off.x) * sc; Y = (y) => H / 2 - (y + off.y) * sc;
+    const fx0 = W / 2 - field.w / 2 * sc, fy0 = H / 2 - field.l / 2 * sc, fw = field.w * sc, fl = field.l * sc;
+    g.fillStyle = "#14321f"; g.fillRect(fx0, fy0, fw, fl);
+    g.strokeStyle = "rgba(255,255,255,0.1)"; g.lineWidth = k;
+    for (let v = field.tile; v < field.w - 1; v += field.tile) line(fx0 + v * sc, fy0, fx0 + v * sc, fy0 + fl);
+    for (let v = field.tile; v < field.l - 1; v += field.tile) line(fx0, fy0 + v * sc, fx0 + fw, fy0 + v * sc);
+    g.strokeStyle = "rgba(255,255,255,0.75)"; g.lineWidth = 2 * k; g.strokeRect(fx0, fy0, fw, fl);
+    if (S.field.name === "soccer") { line(fx0, H / 2, fx0 + fw, H / 2); g.beginPath(); g.arc(W / 2, H / 2, 150 * sc, 0, 2 * Math.PI); g.stroke(); }
+  } else {  // fitted to everything seen, centred on the robot, with distance rings around it
+    half = 400;
+    for (const p of trail.concat(remembered, current)) half = Math.max(half, Math.abs(p.x - R.x) + 120, Math.abs(p.y - R.y) + 120);
+    sc = (Math.min(W, H) / 2 - pad) / half; X = (x) => W / 2 + (x - R.x) * sc; Y = (y) => H / 2 - (y - R.y) * sc;
+    const hx = W / 2 / sc, hy = H / 2 / sc;  // how far the canvas reaches from the robot, across and up
+    g.strokeStyle = "#1d2125"; g.lineWidth = k;
+    const step = half > 1500 ? 500 : 100;
+    for (let v = Math.ceil((R.x - hx) / step) * step; v <= R.x + hx; v += step) line(X(v), 0, X(v), H);
+    for (let v = Math.ceil((R.y - hy) / step) * step; v <= R.y + hy; v += step) line(0, Y(v), W, Y(v));
+    const ring = niceStep(half / 3);
+    g.strokeStyle = "rgba(255,255,255,0.14)"; g.setLineDash([2 * k, 4 * k]); setFont(g, k, 12); g.fillStyle = "#6b7280"; g.textAlign = "left";
+    for (let r = ring; r < Math.hypot(hx, hy); r += ring) {
+      g.beginPath(); g.arc(X(R.x), Y(R.y), r * sc, 0, 2 * Math.PI); g.stroke();
+      const lx = X(R.x) + r * sc * 0.72 + 3 * k, ly = Y(R.y) + r * sc * 0.69;
+      if (lx < W - 30 * k && ly < H - 20 * k) g.fillText(r >= 1000 ? `${r / 1000} m` : `${r / 10} cm`, lx, ly);
+    }
+    g.setLineDash([]);
+  }
+  mapView = { sc, field };
+  const reach = Math.max(half * 3, Math.hypot(W, H) / sc);
+  const clip = () => { g.save(); if (field) { g.beginPath(); g.rect(W / 2 - field.w / 2 * sc, H / 2 - field.l / 2 * sc, field.w * sc, field.l * sc); g.clip(); } };
+  // what the camera can see, with an arc at the furthest each kind of object has been spotted
+  clip();
+  g.fillStyle = "rgba(34,197,94,0.08)"; g.strokeStyle = "rgba(34,197,94,0.35)"; g.lineWidth = 1.5 * k;
+  g.beginPath(); g.moveTo(X(R.x), Y(R.y));
+  for (let a = -fov; a <= fov + 1e-6; a += fov / 12) g.lineTo(X(R.x + reach * Math.sin(h + a)), Y(R.y + reach * Math.cos(h + a)));
+  g.closePath(); g.fill(); g.stroke();
+  const arcs = {};
+  for (const [key, r] of Object.entries(S.camera_range || {})) if (r.range_mm)
+    (arcs[Math.round(r.range_mm / 50)] ||= { mm: r.range_mm, names: [] }).names.push(SHORT[key] || keyName(key));
+  g.strokeStyle = "rgba(134,239,172,0.6)"; g.setLineDash([3 * k, 5 * k]);
+  for (const a of Object.values(arcs)) { g.beginPath(); g.arc(X(R.x), Y(R.y), a.mm * sc, h - fov - Math.PI / 2, h + fov - Math.PI / 2); g.stroke(); }
+  g.setLineDash([]); g.restore();
+  setFont(g, k, 12); g.textAlign = "left"; g.fillStyle = "rgba(134,239,172,0.95)";
+  for (const a of Object.values(arcs)) {
+    const ang = h + fov - Math.PI / 2;
+    g.fillText(`${a.names.join("/")} ${cm(a.mm)} cm`, Math.min(W - 90 * k, Math.max(4 * k, X(R.x) + a.mm * sc * Math.cos(ang) + 5 * k)),
+      Math.min(H - 24 * k, Math.max(14 * k, Y(R.y) + a.mm * sc * Math.sin(ang))));
+  }
+  if (trail.length > 1) { g.strokeStyle = "#4b5563"; g.lineWidth = 2 * k; g.beginPath(); trail.forEach((p, i) => (i ? g.lineTo(X(p.x), Y(p.y)) : g.moveTo(X(p.x), Y(p.y)))); g.stroke(); }
+  // seen now but no distance yet: direction only
+  g.setLineDash([6 * k, 6 * k]); g.lineWidth = 1.5 * k; g.textAlign = "center"; setFont(g, k, 12);
+  const rayLabels = [];
+  for (const d of S.detections) if (!d.distance_mm && !d.held) {
+    const a = d.heading * Math.PI / 180, text = d.kind === "apriltag" ? d.label || "tag " + d.id : shortName(d.display);
+    g.strokeStyle = swatch(d); line(X(R.x), Y(R.y), X(R.x + reach * Math.sin(a)), Y(R.y + reach * Math.cos(a)));
+    const tw = g.measureText(text).width + 6 * k, th = 15 * k;
+    let lx, ly;
+    for (const f of [0.6, 0.75, 0.45, 0.9, 0.3]) {  // slide along the ray until it doesn't cover another label
+      lx = Math.min(W - tw / 2, Math.max(tw / 2, X(R.x + half * f * Math.sin(a)))); ly = Math.min(H - 8 * k, Math.max(16 * k, Y(R.y + half * f * Math.cos(a))));
+      if (!rayLabels.some((r) => Math.abs(r.x - lx) < (r.w + tw) / 2 && Math.abs(r.y - ly) < th)) break;
+    }
+    rayLabels.push({ x: lx, y: ly, w: tw });
+    g.fillStyle = "#e6e8ea"; g.fillText(text, lx, ly);
+    if (d.kind === "apriltag") mapHits.push({ id: d.id, x: lx, y: ly - 4 * k, r: Math.max(16 * k, tw / 2) });
+  }
+  g.setLineDash([]);
+  // obstacles' keep-out zones
+  for (const o of obstacleSpots(off)) {
+    const r = Math.max(6 * k, S.obstacle_mm * sc);
+    g.fillStyle = "rgba(239,68,68,0.18)"; g.strokeStyle = "rgba(239,68,68,0.85)"; g.lineWidth = 1.5 * k;
+    g.beginPath(); g.arc(X(o.x), Y(o.y), r, 0, 2 * Math.PI); g.fill(); g.stroke();
+  }
+  // goal mouths
+  const G = goals(), verdict = S.team && G[S.team] ? shot(G[S.team]) : null;
+  for (const goal of Object.values(G)) {
+    g.strokeStyle = goal.colour === "blue" ? "#3b82f6" : "#f59e0b"; g.lineWidth = (goal.colour === S.team ? 4 : 2.5) * k;
+    line(X(goal.a.x), Y(goal.a.y), X(goal.b.x), Y(goal.b.y));
+  }
+  // objects with a distance: remembered ones (hollow) and ones in view now (solid, with how far away); goals get one label
+  const posts = new Set(Object.values(G).flatMap((goal) => [goal.a, goal.b]));
+  setFont(g, k, 12); g.textAlign = "center";
+  for (const o of remembered) {
+    const x = X(o.x), y = Y(o.y), col = swatch(o);
+    g.globalAlpha = o.visible ? 1 : 0.65;
+    if (o.kind === "apriltag") { tagMark(g, k, x, y, o.id, o.visible, false); mapHits.push({ id: o.id, x, y, r: 12 * k }); }
+    else if (o.visible) { g.fillStyle = col; g.beginPath(); g.arc(x, y, 5 * k, 0, 2 * Math.PI); g.fill(); }
+    else { g.strokeStyle = col; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 4.5 * k, 0, 2 * Math.PI); g.stroke(); }
+    if (!posts.has(o)) {
+      g.fillStyle = o.visible ? "#e6e8ea" : "#9aa1a9";
+      g.fillText(nick(o) + (o.visible ? ` · ${cm(Math.hypot(o.x - R.x, o.y - R.y))} cm` : ""), x, y - 10 * k);
+    }
+    g.globalAlpha = 1;
+  }
+  // moving things: an arrow for where they'll be in a second, and where a rolling ball will stop
+  for (const o of remembered) {
+    const v = Math.hypot(o.vx || 0, o.vy || 0);
+    if (v < 60) continue;
+    const x = X(o.x), y = Y(o.y), ex = X(o.x + o.vx), ey = Y(o.y + o.vy), ang = Math.atan2(ey - y, ex - x);
+    g.strokeStyle = g.fillStyle = "#fde047"; g.lineWidth = 2 * k; line(x, y, ex, ey);
+    g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex - 8 * k * Math.cos(ang - 0.45), ey - 8 * k * Math.sin(ang - 0.45));
+    g.lineTo(ex - 8 * k * Math.cos(ang + 0.45), ey - 8 * k * Math.sin(ang + 0.45)); g.closePath(); g.fill();
+    setFont(g, k, 12, 600); g.textAlign = "left"; g.fillText(`${cm(v)} cm/s`, ex + 6 * k, ey);
+    if (o.name === "SportsBall" && v > 100) {
+      const stop = v * v / (2 * floorSlowing()), sx = X(o.x + o.vx / v * stop), sy = Y(o.y + o.vy / v * stop);
+      g.setLineDash([3 * k, 4 * k]); line(x, y, sx, sy); g.setLineDash([]);
+      g.lineWidth = 1.5 * k; g.beginPath(); g.arc(sx, sy, 7 * k, 0, 2 * Math.PI); g.stroke();
+      g.fillText("stops about here", sx + 10 * k, sy + 4 * k);
+    }
+  }
+  const rc = race();
+  if (rc) {  // the race to the ball
+    const bx = X(rc.ball.x), by = Y(rc.ball.y), win = !rc.them || rc.us <= rc.them.t;
+    setFont(g, k, 12, 600); g.textAlign = "center"; g.lineWidth = 1.5 * k; g.setLineDash([2 * k, 5 * k]);
+    g.strokeStyle = g.fillStyle = win ? "#4ade80" : "#f87171";
+    const label = (x0, y0, text) => {  // a third of the way from the robot, so it doesn't sit on the ball's own label
+      if (Math.hypot(bx - x0, by - y0) < 40 * k) return;
+      g.fillText(text, x0 + (bx - x0) * 0.35, y0 + (by - y0) * 0.35 - 6 * k);
+    };
+    line(X(R.x), Y(R.y), bx, by);
+    label(X(R.x), Y(R.y), `you ${rc.us.toFixed(1)} s`);
+    if (rc.them) {
+      g.strokeStyle = g.fillStyle = win ? "#f87171" : "#4ade80";
+      line(X(rc.them.o.x), Y(rc.them.o.y), bx, by);
+      label(X(rc.them.o.x), Y(rc.them.o.y), `robot ${rc.them.t.toFixed(1)} s`);
+    }
+    g.setLineDash([]);
+  }
+  if (field) for (const p of S.players || []) {  // the rest of the team list, where they are on the field
+    if (p.selected || !p.field_mm) continue;
+    const x = X(p.field_mm[0] - off.x), y = Y(p.field_mm[1] - off.y);
+    g.save(); g.translate(x, y); g.rotate((p.heading_deg || 0) * Math.PI / 180); g.globalAlpha = p.connected ? 1 : 0.45;
+    g.fillStyle = p.team === "blue" ? "#3b82f6" : p.team === "orange" ? "#f59e0b" : "#9ca3af";
+    g.beginPath(); g.moveTo(0, -11 * k); g.lineTo(8 * k, 9 * k); g.lineTo(0, 5 * k); g.lineTo(-8 * k, 9 * k); g.closePath(); g.fill(); g.restore();
+    setFont(g, k, 12, 600); g.textAlign = "center"; g.fillStyle = "#e6e8ea"; g.fillText(p.name, x, y - 15 * k);
+  }
+  for (const p of pins) {
+    const seen = S.detections.some((d) => d.kind === "apriltag" && d.id === p.id);
+    tagMark(g, k, X(p.x), Y(p.y), p.id, true, true, seen);
+    mapHits.push({ id: p.id, x: X(p.x), y: Y(p.y), r: 14 * k });
+    g.fillStyle = "#a5f3fc"; g.fillText(tagLabel(p.id) || "tag " + p.id, X(p.x), Y(p.y) - 13 * k);
+  }
+  setFont(g, k, 12, 600);
+  for (const goal of Object.values(G)) { g.fillStyle = goal.colour === "blue" ? "#93c5fd" : "#fcd34d"; g.fillText(`${goal.colour} goal`, X(goal.mid.x), Y(goal.mid.y) - 10 * k); }
+  // where a kick straight ahead would go (green if it would score for our team), with each kick's measured reach
+  clip(); g.setLineDash([8 * k, 6 * k]); g.lineWidth = 1.5 * k;
+  g.strokeStyle = verdict ? (verdict.onTarget ? "#22c55e" : "#ef4444") : "rgba(255,255,255,0.3)";
+  line(X(R.x), Y(R.y), X(R.x + reach * Math.sin(h)), Y(R.y + reach * Math.cos(h)));
+  g.setLineDash([]); g.restore();
+  setFont(g, k, 12, 700); g.textAlign = "center";
+  for (const [s, r] of Object.entries(S.kick_reach || {})) {
+    const px = X(R.x + r.mm * Math.sin(h)), py = Y(R.y + r.mm * Math.cos(h)), nx = Math.cos(h) * 7 * k, ny = Math.sin(h) * 7 * k;
+    g.strokeStyle = "#fde047"; g.lineWidth = 2.5 * k; line(px - nx, py - ny, px + nx, py + ny);
+    g.fillStyle = "#fde047"; g.fillText(s[0].toUpperCase(), px + nx * 1.9, py + ny * 1.9 + 4 * k);
+  }
+  g.save(); g.translate(X(R.x), Y(R.y)); g.rotate(h);
+  g.fillStyle = "#22c55e"; g.beginPath(); g.moveTo(0, -12 * k); g.lineTo(8 * k, 9 * k); g.lineTo(0, 5 * k); g.lineTo(-8 * k, 9 * k); g.closePath(); g.fill();
+  g.restore();
+  pill(g, k, field ? `${field.name} · tiles ${field.tile_label}` : "fitted to what it's seen", 6 * k, H - 24 * k);
+  if (placing) {
+    setFont(g, k, 13, 600); g.fillStyle = "#eab308"; g.textAlign = "center";
+    g.fillText(placing.robot ? "Click where the robot is now (Esc to cancel)" : placing.play === "go_to" ? "Click where the robot should go (Esc to cancel)"
+      : placing.play === "pass_to" ? "Click where to pass the ball (Esc to cancel)" : `Click where AprilTag ${placing.tag} is (Esc to cancel)`, W / 2, 22 * k);
+  }
+}
+function tagMark(g, k, x, y, id, solid, pinnedMark, seen) {  // an AprilTag on a map: a small white square with its id
+  const s = 6 * k;
+  if (pinnedMark) { g.strokeStyle = seen ? "#22d3ee" : "rgba(34,211,238,.6)"; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, s * 1.9, 0, 2 * Math.PI); g.stroke(); }
+  g.fillStyle = solid ? "#f5f5f5" : "rgba(245,245,245,.35)"; g.fillRect(x - s, y - s, 2 * s, 2 * s);
+  g.strokeStyle = "#111"; g.lineWidth = 1.5 * k; g.strokeRect(x - s, y - s, 2 * s, 2 * s);
+  const f = g.font; setFont(g, k, 9, 800); g.fillStyle = "#111"; g.textBaseline = "middle"; g.textAlign = "center";
+  g.fillText(String(id), x, y + 0.5 * k); g.textBaseline = "alphabetic"; g.font = f;
+}
+
+// the map's field; placing the robot or a marker on it; clicking a tag to define it
+const fieldSel = $("#field");
+fieldSel.innerHTML = '<option value="fit">Fit to what it\'s seen</option>' +
+  Object.entries(FIELDS).map(([key, f]) => `<option value="${key}">${cap(f.name)}</option>`).join("");
+fieldSel.onchange = () => api("field", { name: fieldSel.value });
+setInterval(() => { if (S && document.activeElement !== fieldSel) fieldSel.value = S.field.name; }, 500);
+function startPin(id) {
+  if (!FIELDS[S.field.name]) return toast("Choose a field for the map first, then pin markers to it.");
+  placing = { tag: id }; $("#map").scrollIntoView({ block: "center", behavior: "smooth" }); drawMap();
+}
+$("#placeRobot").onclick = () => {
+  if (!FIELDS[S.field.name]) return toast("Choose a field first, then place the robot on it.");
+  placing = placing && placing.robot ? null : { robot: true }; drawMap();
+};
+$("#map").addEventListener("click", async (ev) => {
+  const c = $("#map"), r = c.getBoundingClientRect(), px = (ev.clientX - r.left) * c.width / r.width, py = (ev.clientY - r.top) * c.height / r.height;
+  if (placing && placing.play && mapView) {  // where to go, or pass to: field mm on a field, else from where it connected
+    const x = (px - c.width / 2) / mapView.sc + (mapView.field ? 0 : S.robot.x), y = -(py - c.height / 2) / mapView.sc + (mapView.field ? 0 : S.robot.y);
+    const play = placing.play; placing = null; drawMap();
+    if (await ask(play === "go_to" ? "Go there?" : "Pass the ball there?", "The robot moves by itself. Is the way clear?", "Go"))
+      api("play", { play, x, y });
+    return;
+  }
+  if (placing && mapView && mapView.field) {
+    const fx = (px - c.width / 2) / mapView.sc, fy = -(py - c.height / 2) / mapView.sc;  // field coordinates of the click
+    if (placing.robot) api("place_robot", { x: fx, y: fy }); else api("tag", { id: placing.tag, pin: [fx, fy] });
+    placing = null; drawMap(); return;
+  }
+  const hit = mapHits.map((h) => [Math.hypot(h.x - px, h.y - py), h]).filter(([d, h]) => d < h.r).sort((a, b) => a[0] - b[0])[0];
+  if (hit) openTagEditor(hit[1].id, ev.clientX + 12, ev.clientY + 12); else closeTagEditor();
+});
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { placing = null; closeInspector(); closeTagEditor(); if (S) drawMap(); } });
+
+// ---------------------------------------------------------------- goals and shot prediction (from remembered barrels: estimates)
+function goals() {  // the two nearest remembered barrels of a colour make that colour's goal
+  const out = {}, R = S.robot;
+  for (const [colour, name] of [["blue", "BlueBarrel"], ["orange", "OrangeBarrel"]]) {
+    const posts = (S.map || []).filter((o) => o.name === name)
+      .sort((p, q) => Math.hypot(p.x - R.x, p.y - R.y) - Math.hypot(q.x - R.x, q.y - R.y)).slice(0, 2);
+    if (posts.length === 2) out[colour] = { colour, a: posts[0], b: posts[1], mid: { x: (posts[0].x + posts[1].x) / 2, y: (posts[0].y + posts[1].y) / 2 } };
+  }
+  return out;
+}
+function shot(goal) {  // would a kick straight ahead pass between the posts? and how far to turn to aim at the centre
+  const R = S.robot, h = R.heading * Math.PI / 180, ux = Math.sin(h), uy = Math.cos(h);
+  const ex = goal.b.x - goal.a.x, ey = goal.b.y - goal.a.y, wx = goal.a.x - R.x, wy = goal.a.y - R.y;
+  const den = ux * ey - uy * ex;
+  let onTarget = false;
+  if (Math.abs(den) > 1e-9) {
+    const t = (wx * ey - wy * ex) / den, s = (wx * uy - wy * ux) / den;  // distance along the aim line; position across the mouth (0-1)
+    onTarget = t > 0 && s > 0.1 && s < 0.9;  // a little margin inside each post
+  }
+  const toMid = Math.atan2(goal.mid.x - R.x, goal.mid.y - R.y) * 180 / Math.PI;
+  return { onTarget, turn: ((toMid - R.heading + 540) % 360) - 180, dist: Math.hypot(goal.mid.x - R.x, goal.mid.y - R.y) };
+}
+
+// ---------------------------------------------------------------- the minimap: a heading-up radar over the picture
+let showMini = true;
+try { showMini = localStorage.getItem("aimMinimap") !== "off"; } catch (e) {}
+function drawMinimap() {
+  const c = $("#minimap"); c.classList.toggle("tucked", !showMini); $("#radar").hidden = showMini;
+  if (!showMini) { if (S) $("#radar").innerHTML = S.map.length ? `<b>${S.map.filter((o) => o.visible).length || ""}</b>` : ""; return; }
+  if (!S) return;
+  const g = c.getContext("2d"), k = fit(c), W = c.width, r0 = W / 2, R = S.robot;
+  const line = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+  g.clearRect(0, 0, W, W);
+  g.save(); g.beginPath(); g.arc(r0, r0, r0 - 1.5 * k, 0, 2 * Math.PI); g.clip();
+  g.fillStyle = "rgba(10,12,14,0.66)"; g.fillRect(0, 0, W, W);
+  if (!R.connected) { g.restore(); return; }
+  const h = R.heading * Math.PI / 180, field = FIELDS[S.field.name], off = field ? { x: S.field.offset[0], y: S.field.offset[1] } : null;
+  const pins = field ? Object.entries(S.tags).filter(([, t]) => t.pin).map(([id, t]) => ({ id: +id, x: t.pin[0] - off.x, y: t.pin[1] - off.y })) : [];
+  const pinned = new Set(pins.map((p) => p.id)), objs = S.map.filter((o) => !(o.kind === "apriltag" && pinned.has(o.id)));
+  let range = 400;
+  for (const o of objs.concat(pins)) range = Math.max(range, Math.hypot(o.x - R.x, o.y - R.y) * 1.2);
+  range = Math.min(range, 4000);
+  const sc = (r0 - 6 * k) / range;
+  const P = (x, y) => { const dx = x - R.x, dy = y - R.y;  // world -> robot frame (forward = up)
+    return [r0 + (dx * Math.cos(h) - dy * Math.sin(h)) * sc, r0 - (dx * Math.sin(h) + dy * Math.cos(h)) * sc]; };
+  const ring = range > 2000 ? 1000 : range > 800 ? 500 : 250;
+  g.strokeStyle = "rgba(255,255,255,0.13)"; g.lineWidth = k;
+  for (let d = ring; d < range; d += ring) { g.beginPath(); g.arc(r0, r0, d * sc, 0, 2 * Math.PI); g.stroke(); }
+  const fov = (S.fov_deg || 34) * Math.PI / 180;
+  g.fillStyle = "rgba(34,197,94,0.16)"; g.beginPath(); g.moveTo(r0, r0);
+  g.lineTo(r0 - Math.sin(fov) * W, r0 - Math.cos(fov) * W); g.lineTo(r0 + Math.sin(fov) * W, r0 - Math.cos(fov) * W); g.closePath(); g.fill();
+  for (const o of obstacleSpots(off)) {
+    const [x, y] = P(o.x, o.y);
+    g.fillStyle = "rgba(239,68,68,0.22)"; g.strokeStyle = "rgba(239,68,68,0.9)"; g.lineWidth = 1.5 * k;
+    g.beginPath(); g.arc(x, y, Math.max(5 * k, S.obstacle_mm * sc), 0, 2 * Math.PI); g.fill(); g.stroke();
+  }
+  const G = goals(), verdict = S.team && G[S.team] ? shot(G[S.team]) : null;
+  for (const goal of Object.values(G)) {
+    const [ax, ay] = P(goal.a.x, goal.a.y), [bx, by] = P(goal.b.x, goal.b.y);
+    g.strokeStyle = goal.colour === "blue" ? "#3b82f6" : "#f59e0b"; g.lineWidth = (goal.colour === S.team ? 4 : 2) * k; line(ax, ay, bx, by);
+  }
+  g.setLineDash([5 * k, 4 * k]); g.lineWidth = 1.5 * k;
+  g.strokeStyle = verdict ? (verdict.onTarget ? "#22c55e" : "#ef4444") : "rgba(255,255,255,0.35)";
+  line(r0, r0, r0, 0);
+  g.lineWidth = k;
+  for (const d of S.detections) if (!d.distance_mm && !d.held) {  // direction only
+    const a = d.bearing * Math.PI / 180; g.strokeStyle = swatch(d); line(r0, r0, r0 + Math.sin(a) * W, r0 - Math.cos(a) * W);
+  }
+  g.setLineDash([]);
+  const posts = new Set(Object.values(G).flatMap((goal) => [goal.a, goal.b]));
+  setFont(g, k, 12, 600); g.textAlign = "center";
+  for (const o of objs) {
+    const [x, y] = P(o.x, o.y);
+    g.globalAlpha = o.visible ? 1 : 0.7;
+    if (o.kind === "apriltag") tagMark(g, k, x, y, o.id, o.visible, false);
+    else if (o.visible) { g.fillStyle = swatch(o); g.beginPath(); g.arc(x, y, 4.5 * k, 0, 2 * Math.PI); g.fill(); }
+    else { g.strokeStyle = swatch(o); g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 4 * k, 0, 2 * Math.PI); g.stroke(); }
+    if (!posts.has(o) && o.kind !== "apriltag") { g.fillStyle = "#e6e8ea"; g.fillText(nick(o).slice(0, 12), x, y - 8 * k); }
+    g.globalAlpha = 1;
+  }
+  for (const p of pins) { const [x, y] = P(p.x, p.y); tagMark(g, k, x, y, p.id, true, true, S.detections.some((d) => d.kind === "apriltag" && d.id === p.id)); }
+  for (const goal of Object.values(G)) {  // one label per goal instead of one per post
+    const [x, y] = P(goal.mid.x, goal.mid.y);
+    g.fillStyle = goal.colour === "blue" ? "#93c5fd" : "#fcd34d"; g.fillText(`${goal.colour} goal`, x, y - 8 * k);
+  }
+  g.fillStyle = "#22c55e"; g.beginPath(); g.moveTo(r0, r0 - 10 * k); g.lineTo(r0 + 7 * k, r0 + 7 * k); g.lineTo(r0, r0 + 4 * k); g.lineTo(r0 - 7 * k, r0 + 7 * k); g.closePath(); g.fill();
+  g.fillStyle = "#e6e8ea"; g.fillText(`${Math.round(R.heading) % 360}°`, r0, 16 * k);
+  if (verdict) {
+    const K = S.kick_reach || {}, s = STRENGTHS.find((x) => K[x] && K[x].mm >= verdict.dist);
+    const msg = verdict.onTarget ? (s ? `ON TARGET · ${s}` : "ON TARGET") : `turn ${Math.abs(Math.round(verdict.turn))}° ${verdict.turn > 0 ? "right" : "left"}`;
+    setFont(g, k, 12, 700); const w = g.measureText(msg).width + 14 * k;
+    g.fillStyle = "rgba(0,0,0,0.65)"; g.fillRect(r0 - w / 2, W - 34 * k, w, 18 * k);
+    g.fillStyle = verdict.onTarget ? "#22c55e" : "#fca5a5"; g.fillText(msg, r0, W - 21 * k);
+  }
+  g.restore();
+  g.strokeStyle = "rgba(255,255,255,0.55)"; g.lineWidth = 2 * k; g.beginPath(); g.arc(r0, r0, r0 - 1.5 * k, 0, 2 * Math.PI); g.stroke();
+}
+function toggleMini() { showMini = !showMini; try { localStorage.setItem("aimMinimap", showMini ? "on" : "off"); } catch (e) {} drawMinimap(); }
+$("#minimap").onclick = toggleMini;
+$("#radar").onclick = toggleMini;
+
+function logOpen(open) {
+  $("#logCard").classList.toggle("closed", !open); $("#logToggle").setAttribute("aria-expanded", open);
+  try { localStorage.setItem("aimLogOpen", open ? "open" : "closed"); } catch (e) {}
+}
+try { if (localStorage.getItem("aimLogOpen") === "closed") logOpen(false); } catch (e) {}
+$("#logToggle").onclick = () => logOpen($("#logCard").classList.contains("closed"));
+$("#logToggle").onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); $("#logToggle").click(); } };
+window.addEventListener("resize", () => { if (S) { drawLayer(); drawOverlay(); drawMinimap(); drawMap(); } });
+setTab(tab);
+setView(view);
+poll();
+</script>
+</body>
+</html>
